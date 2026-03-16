@@ -1,0 +1,2 @@
+여기에 사용자의 지도 이미지 파일을 넣고 파일명을 map-bg.png 로 맞춰주세요.
+예: public/map-bg.png
