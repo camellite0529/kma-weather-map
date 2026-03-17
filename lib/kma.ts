@@ -204,11 +204,24 @@ function pickRepresentativeWeather(
 }
 
 function getPrecipCategoryItems(dayItems: ForecastItem[]) {
-  // Some examples/documentation use POP, while some integrations refer to ST.
-  // Support both so the chart still works even if the upstream payload naming differs.
   return dayItems.filter(
     (item) => item.category === "POP" || item.category === "ST",
   );
+}
+
+function pickNearestPopValue(
+  items: Array<{ time: number; value: number }>,
+  targetTime: number
+) {
+  if (!items.length) return null;
+
+  const picked = [...items].sort((a, b) => {
+    const diffA = Math.abs(a.time - targetTime);
+    const diffB = Math.abs(b.time - targetTime);
+    return diffA - diffB;
+  })[0];
+
+  return picked?.value ?? null;
 }
 
 export function summarizeDailyWeather(
@@ -237,16 +250,11 @@ export function summarizeDailyWeather(
     }))
     .filter((item) => Number.isFinite(item.time) && Number.isFinite(item.value));
 
-  const amValues = precipItems
-    .filter((item) => item.time >= 600 && item.time < 1200)
-    .map((item) => item.value);
+  const amItems = precipItems.filter((item) => item.time >= 600 && item.time < 1200);
+  const pmItems = precipItems.filter((item) => item.time >= 1200 && item.time <= 2100);
 
-  const pmValues = precipItems
-    .filter((item) => item.time >= 1200 && item.time <= 2100)
-    .map((item) => item.value);
-
-  const amPop = amValues.length ? Math.max(...amValues) : null;
-  const pmPop = pmValues.length ? Math.max(...pmValues) : null;
+  const amPop = pickNearestPopValue(amItems, 900);
+  const pmPop = pickNearestPopValue(pmItems, 1500);
 
   return {
     date: targetDate,
