@@ -78,11 +78,11 @@ export const TABLE_CITIES = [
 
 export const MAP_MARKER_POSITIONS: Record<string, MarkerPosition> = {
   서울: { x: 31.5, y: 21.5 },
-  인천: { x: 23.8, y: 23.2 },
+  인천: { x: 14.0, y: 23.2 },
   수원: { x: 30.8, y: 28.5 },
   춘천: { x: 42.4, y: 20.2 },
-  속초: { x: 57.2, y: 18.4 },
-  강릉: { x: 58.6, y: 24.0 },
+  속초: { x: 57.2, y: 8.4 },
+  강릉: { x: 72.6, y: 20.2 },
   홍성: { x: 21.6, y: 38.8 },
   세종: { x: 31.8, y: 41.6 },
   청주: { x: 38.2, y: 39.2 },
@@ -97,9 +97,9 @@ export const MAP_MARKER_POSITIONS: Record<string, MarkerPosition> = {
   광주: { x: 22.6, y: 67.0 },
   목포: { x: 14.0, y: 75.2 },
   여수: { x: 35.2, y: 75.4 },
-  제주: { x: 15.8, y: 92.2 },
-  울릉도: { x: 76.6, y: 35.8 },
-  독도: { x: 88.0, y: 33.0 },
+  제주: { x: 42.4, y: 92.2 },
+  울릉도: { x: 72.6, y: 92.2 },
+  독도: { x: 88.0, y: 92.2 },
 };
 
 function getKstParts(date = new Date()) {
