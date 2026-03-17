@@ -16,6 +16,8 @@ export type DailyWeather = {
   minTemp: number | null;
   maxTemp: number | null;
   sky: string | null;
+  amPop: number | null;
+  pmPop: number | null;
 };
 
 export type CityWeather = {
@@ -206,13 +208,34 @@ export function summarizeDailyWeather(items: ForecastItem[], targetDate: string)
     return diffA - diffB;
   })[0];
 
+  const popItems = dayItems
+    .filter((item) => item.category === "POP")
+    .map((item) => ({
+      time: Number(item.fcstTime),
+      value: Number(item.fcstValue),
+    }))
+    .filter((item) => Number.isFinite(item.time) && Number.isFinite(item.value));
+
+  const amValues = popItems
+    .filter((item) => item.time >= 600 && item.time < 1200)
+    .map((item) => item.value);
+
+  const pmValues = popItems
+    .filter((item) => item.time >= 1200 && item.time <= 2100)
+    .map((item) => item.value);
+
+  const amPop = amValues.length ? Math.max(...amValues) : null;
+  const pmPop = pmValues.length ? Math.max(...pmValues) : null;
+
   const displaySky = ptyCodeToText(pickedPty?.fcstValue) ?? skyCodeToText(pickedSky?.fcstValue);
 
   return {
     date: targetDate,
     minTemp,
     maxTemp,
-    sky: displaySky
+    sky: displaySky,
+    amPop,
+    pmPop,
   };
 }
 
