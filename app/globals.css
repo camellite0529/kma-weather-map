@@ -589,6 +589,25 @@ body {
    12) Mobile
    ========================= */
 @media (max-width: 768px) {
+
+   .today-note-top {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.today-note-label {
+  font-size: 14px;
+}
+
+.today-note-short {
+  height: 38px;
+  font-size: 13px;
+}
+
+.today-note-long {
+  min-height: 100px;
+  font-size: 13px;
+}
   .forecast-grid {
     grid-template-columns: 1fr;
   }
