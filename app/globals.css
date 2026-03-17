@@ -170,16 +170,16 @@ body {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 2;
-  min-width: 18mm;
-  max-width: 26mm;
+  min-width: 20mm;
+  max-width: 28mm;
 }
 
 .marker-card {
   display: flex;
   flex-direction: column;
-  gap: 1.2mm;
-  padding: 1.8mm 2.1mm;
-  border-radius: 2.4mm;
+  gap: 0.6mm;
+  padding: 1.1mm 1.5mm;
+  border-radius: 2.2mm;
   background: rgba(255, 255, 255, 0.92);
   color: #111111;
   border: 1px solid rgba(0, 0, 0, 0.12);
@@ -193,12 +193,13 @@ body {
 
 .marker-line {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1.3mm;
+  flex-wrap: nowrap;
+  gap: 0.8mm;
   align-items: center;
-  font-size: 2.8mm;
-  line-height: 1.25;
-}
+  white-space: nowrap;
+  font-size: 2.3mm;
+  line-height: 1.1;
+} 
 
 .marker-city {
   font-weight: 700;
@@ -206,6 +207,7 @@ body {
 
 .marker-temp {
   color: #333333;
+  white-space: nowrap;
 }
 
 .precip-card {
