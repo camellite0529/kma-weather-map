@@ -209,21 +209,6 @@ function getPrecipCategoryItems(dayItems: ForecastItem[]) {
   );
 }
 
-function pickNearestPopValue(
-  items: Array<{ time: number; value: number }>,
-  targetTime: number
-) {
-  if (!items.length) return null;
-
-  const picked = [...items].sort((a, b) => {
-    const diffA = Math.abs(a.time - targetTime);
-    const diffB = Math.abs(b.time - targetTime);
-    return diffA - diffB;
-  })[0];
-
-  return picked?.value ?? null;
-}
-
 export function summarizeDailyWeather(
   items: ForecastItem[],
   targetDate: string,
@@ -253,8 +238,8 @@ export function summarizeDailyWeather(
   const amItems = precipItems.filter((item) => item.time >= 600 && item.time < 1200);
   const pmItems = precipItems.filter((item) => item.time >= 1200 && item.time <= 2100);
 
-  const amPop = pickNearestPopValue(amItems, 900);
-  const pmPop = pickNearestPopValue(pmItems, 1500);
+  const amPop = amItems.length ? Math.max(...amItems.map((item) => item.value)) : null;
+  const pmPop = pmItems.length ? Math.max(...pmItems.map((item) => item.value)) : null;
 
   return {
     date: targetDate,
