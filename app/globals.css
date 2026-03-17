@@ -1,3 +1,6 @@
+/* =========================
+   1) 배경틀
+   ========================= */
 :root {
   color-scheme: light;
   --bg: #f3f3f3;
@@ -33,13 +36,18 @@ body {
   padding: 24px 0;
 }
 
+/* =========================
+   2) A4 출력 설정 
+   ========================= */
 .a4-sheet {
   width: 210mm;
   min-height: 297mm;
   margin: 0 auto;
   background: var(--paper);
   padding: 8mm 8mm 9mm;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 12px 30px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
 .print-head {
@@ -79,6 +87,9 @@ body {
   text-align: right;
 }
 
+/* =========================
+   3) 각 카드
+   ========================= */
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -127,19 +138,40 @@ body {
   font-size: 3mm;
 }
 
+/* =========================
+   4) Main 2-column layout
+   ========================= */
 .news-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
   gap: 5mm;
-  align-items: start;
+  align-items: stretch;
+}
+
+.layout-map {
+  height: 100%;
 }
 
 .right-column {
   display: flex;
   flex-direction: column;
-  gap: 5mm;
+  gap: 3mm;
+  height: 100%;
 }
 
+.precip-card {
+  flex: 0 0 58%;
+  padding: 3mm 3mm 2.6mm;
+}
+
+.forecast-card {
+  flex: 0 0 42%;
+  padding: 2.4mm;
+}
+
+/* =========================
+   5) 날씨지도
+   ========================= */
 .layout-map .map-stage {
   aspect-ratio: 1296 / 2090;
 }
@@ -186,9 +218,9 @@ body {
 }
 
 .marker-weather {
-  font-size: 3.9mm;
+  font-size: 3.2mm;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .marker-line {
@@ -199,10 +231,11 @@ body {
   white-space: nowrap;
   font-size: 2.3mm;
   line-height: 1.1;
-} 
+}
 
 .marker-city {
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .marker-temp {
@@ -210,11 +243,22 @@ body {
   white-space: nowrap;
 }
 
+/* =========================
+   6) 강수확률 
+   ========================= */
 .precip-card .section-header {
   align-items: center;
   flex-wrap: nowrap;
   gap: 2mm;
-} 
+}
+
+.precip-card .section-header h2 {
+  margin: 0;
+  font-size: 3.6mm;
+  line-height: 1.1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .precip-legend {
   display: flex;
@@ -234,8 +278,8 @@ body {
 
 .legend-swatch {
   display: inline-block;
-  width: 4mm;
-  height: 2mm;
+  width: 3.2mm;
+  height: 1.6mm;
   border-radius: 999px;
 }
 
@@ -249,9 +293,9 @@ body {
 
 .precip-scale {
   position: relative;
-  height: 4mm;
-  margin: 0 0 1.5mm 18mm;
-  font-size: 2.5mm;
+  height: 3mm;
+  margin: 0 0 1mm 14mm;
+  font-size: 2.2mm;
   color: var(--muted);
 }
 
@@ -264,24 +308,25 @@ body {
 .precip-chart {
   display: flex;
   flex-direction: column;
-  gap: 1.8mm;
+  gap: 1mm;
 }
 
 .precip-row {
   display: grid;
-  grid-template-columns: 15mm 1fr;
-  gap: 3mm;
+  grid-template-columns: 12mm 1fr;
+  gap: 2mm;
   align-items: center;
 }
 
 .precip-label {
-  font-size: 3mm;
+  font-size: 2.6mm;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .precip-track {
   position: relative;
-  height: 10mm;
+  height: 5.2mm;
   border-left: 1px solid var(--line);
   background-image: repeating-linear-gradient(
     to right,
@@ -299,23 +344,23 @@ body {
 }
 
 .precip-bar-am {
-  top: 1mm;
-  height: 3.4mm;
+  top: 0.5mm;
+  height: 1.6mm;
   background: var(--am);
 }
 
 .precip-bar-pm {
-  bottom: 1mm;
-  height: 3.4mm;
+  bottom: 0.5mm;
+  height: 1.6mm;
   background: var(--pm);
 }
 
 .precip-value {
   position: absolute;
-  right: -9mm;
+  right: -7mm;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 2.6mm;
+  font-size: 2.2mm;
   font-weight: 700;
   color: #111;
   white-space: nowrap;
@@ -324,43 +369,43 @@ body {
 .precip-value-zero {
   position: absolute;
   right: 0;
-  font-size: 2.4mm;
+  font-size: 2.1mm;
   font-weight: 700;
   color: #777;
   white-space: nowrap;
 }
 
 .precip-value-am-zero {
-  top: 0.8mm;
+  top: 0.3mm;
 }
 
 .precip-value-pm-zero {
-  bottom: 0.8mm;
+  bottom: 0.3mm;
 }
 
-.forecast-card {
-  padding: 3mm;
-}
-
+/* =========================
+   7) Forecast card
+   ========================= */
 .forecast-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2mm;
+  gap: 1.4mm;
 }
 
 .compact-table {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 2.4mm;
+  border-radius: 2.2mm;
   overflow: hidden;
 }
 
 .compact-table-title {
-  padding: 1.4mm 2mm;
-  font-size: 3mm;
+  padding: 1mm 1.5mm;
+  font-size: 2.8mm;
   font-weight: 700;
   border-bottom: 1px solid var(--line);
   background: #fafafa;
+  line-height: 1.1;
 }
 
 .compact-table table {
@@ -371,16 +416,16 @@ body {
 
 .compact-table th,
 .compact-table td {
-  padding: 1.1mm 1.8mm;
+  padding: 0.8mm 1.3mm;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  font-size: 2.55mm;
-  line-height: 1.2;
+  font-size: 2.35mm;
+  line-height: 1.1;
   text-align: left;
   white-space: nowrap;
 }
 
 .compact-table th {
-  width: 10mm;
+  width: 8.5mm;
   font-weight: 700;
 }
 
@@ -393,6 +438,9 @@ body {
   border-bottom: none;
 }
 
+/* =========================
+   8) Dust placeholder
+   ========================= */
 .dust-card {
   grid-column: 1 / -1;
   min-height: 48mm;
@@ -405,10 +453,16 @@ body {
   background: #fafafa;
 }
 
+/* =========================
+   9) Error block
+   ========================= */
 .error-card {
   margin-top: 10mm;
 }
 
+/* =========================
+   10) Print
+   ========================= */
 @page {
   size: A4 portrait;
   margin: 8mm;
@@ -442,6 +496,9 @@ body {
   }
 }
 
+/* =========================
+   11) Tablet / narrow screens
+   ========================= */
 @media (max-width: 1100px) {
   .a4-sheet {
     width: 100%;
@@ -455,6 +512,7 @@ body {
 
   .right-column {
     gap: 20px;
+    height: auto;
   }
 
   .dust-card {
@@ -471,6 +529,9 @@ body {
   }
 }
 
+/* =========================
+   12) Mobile
+   ========================= */
 @media (max-width: 768px) {
   .forecast-grid {
     grid-template-columns: 1fr;
@@ -478,33 +539,61 @@ body {
 
   .map-marker {
     min-width: 88px;
-    max-width: 128px;
+    max-width: 120px;
   }
 
   .marker-weather {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .marker-line {
+    font-size: 10px;
+  }
+
+  .precip-card .section-header {
+    gap: 8px;
+  }
+
+  .precip-card .section-header h2 {
+    font-size: 14px;
+  }
+
+  .precip-legend {
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .precip-row {
+    grid-template-columns: 44px 1fr;
+    gap: 8px;
+  }
+
+  .precip-label {
     font-size: 11px;
   }
 
   .precip-track {
-    height: 32px;
+    height: 24px;
   }
 
   .precip-bar-am {
-    top: 4px;
-    height: 11px;
+    top: 3px;
+    height: 7px;
   }
 
   .precip-bar-pm {
-    bottom: 4px;
-    height: 11px;
+    bottom: 3px;
+    height: 7px;
   }
 
   .precip-value {
-    right: -34px;
-    font-size: 10px;
+    right: -28px;
+    font-size: 9px;
+  }
+
+  .compact-table th,
+  .compact-table td {
+    font-size: 11px;
+    padding: 4px 6px;
   }
 }
