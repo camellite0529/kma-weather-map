@@ -164,24 +164,35 @@ export default async function Page() {
       <main className="page">
         <div className="a4-sheet">
           <header className="print-head">
-            <div>
-              <p className="eyebrow">KMA WEATHER BOARD</p>
-              <h1>내일·모레·글피 날씨</h1>
-              <p className="subtext">
-                내일 지도 / 눈·비올 확률 / 모레·글피 기온 / 미세먼지 영역
-              </p>
-            </div>
+  <div>
+    <h1>내일·모레·글피 날씨</h1>
+  </div>
 
-            <div className="print-meta">
-              <div>
-                발표기준: {weather.base.baseDate} {weather.base.baseTime}
-              </div>
-              <div>
-                업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR")}
-              </div>
-              <div>표시 도시: {weather.data.length}개</div>
-            </div>
-          </header>
+  <div className="print-meta">
+    <div>
+      발표기준: {weather.base.baseDate} {weather.base.baseTime}
+    </div>
+    <div>
+      업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR")}
+    </div>
+  </div>
+</header>
+
+<section className="card today-note-card">
+  <div className="today-note-top">
+    <div className="today-note-label">오늘의 날씨</div>
+    <input
+      type="text"
+      className="today-note-short"
+      placeholder="짧은 제목 입력"
+    />
+  </div>
+
+  <textarea
+    className="today-note-long"
+    placeholder="텍스트 입력"
+  />
+</section>
 
           {weather.warnings.length > 0 ? (
             <section className="card warning-card">
