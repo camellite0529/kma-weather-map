@@ -533,19 +533,24 @@ body {
    12) 오늘의 날씨 텍스트 부분
    ========================= */
 .today-note-card {
-  margin-bottom: 3mm;
-  padding: 2mm;
+  margin-bottom: 4mm;
+  padding: 0;
+  background: transparent;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 
 .today-note-top {
   display: flex;
   align-items: center;
-  gap: 2mm;
-  margin-bottom: 2mm;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 0 14px;
 }
 
 .today-note-label {
-  flex: 0 0 26mm;
+  flex: 0 0 auto;
   font-size: 3.4mm;
   font-weight: 700;
   white-space: nowrap;
@@ -554,12 +559,11 @@ body {
 .today-note-short {
   flex: 1 1 auto;
   width: auto;
-  height: 9mm;
+  height: 36px;
   border: none;
-  padding: 2mm;
+  padding: 0 12px;
   font-family: inherit;
   font-size: 3mm;
-  font-weight: 400;
   line-height: 1.4;
   color: var(--text);
   background: #f0f0f0;
@@ -567,14 +571,15 @@ body {
 }
 
 .today-note-long {
-  width: 100%;
-  min-height: 45mm;
+  display: block;
+  width: calc(100% - 28px);
+  margin: 0 14px;
+  min-height: 170px;
   resize: none;
   border: none;
-  padding: 2mm;
+  padding: 12px;
   font-family: inherit;
   font-size: 3mm;
-  font-weight: 400;
   line-height: 1.4;
   color: var(--text);
   background: #f0f0f0;
@@ -585,17 +590,23 @@ body {
 .today-note-long::placeholder {
   color: #999;
   font-family: inherit;
-  font-size: 3mm;
-}
+} 
 
 /* =========================
    12) 모바일
    ========================= */
 @media (max-width: 768px) {
+  .today-note-card {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
   .today-note-top {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+    padding: 0;
   }
 
   .today-note-label {
@@ -609,7 +620,9 @@ body {
   }
 
   .today-note-long {
-    min-height: 100px;
+    width: 100%;
+    margin: 0;
+    min-height: 140px;
     font-size: 13px;
   }
    
