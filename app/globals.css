@@ -556,8 +556,11 @@ body {
   width: auto;
   height: 9mm;
   border: none;
-  padding: 2.0mm;
+  padding: 2mm;
+  font-family: inherit;
   font-size: 3mm;
+  font-weight: 400;
+  line-height: 1.4;
   color: var(--text);
   background: #f0f0f0;
   outline: none;
@@ -565,11 +568,13 @@ body {
 
 .today-note-long {
   width: 100%;
-  min-height: 30mm;
+  min-height: 45mm;
   resize: none;
   border: none;
-  padding: 2.0mm;
+  padding: 2mm;
+  font-family: inherit;
   font-size: 3mm;
+  font-weight: 400;
   line-height: 1.4;
   color: var(--text);
   background: #f0f0f0;
@@ -579,7 +584,8 @@ body {
 .today-note-short::placeholder,
 .today-note-long::placeholder {
   color: #999;
-}
+  font-family: inherit;
+  font-size: 3mm;
 }
 
 /* =========================
