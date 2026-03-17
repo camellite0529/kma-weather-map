@@ -37,7 +37,7 @@ body {
 }
 
 /* =========================
-   2) A4 출력 설정 
+   2) A4 출력 최적화
    ========================= */
 .a4-sheet {
   width: 210mm;
@@ -79,8 +79,7 @@ body {
    ========================= */
 .card {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 4mm;
+  border: none;
   padding: 4mm;
   box-shadow: none;
 }
@@ -382,7 +381,7 @@ body {
 .compact-table {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 2.2mm;
+  border-radius: 2.0mm;
   overflow: hidden;
 }
 
@@ -531,52 +530,50 @@ body {
 }
 
 /* =========================
-   오늘의 날씨 텍스트 부분
+   12) 오늘의 날씨 텍스트 부분
    ========================= */
 .today-note-card {
-  margin-bottom: 4mm;
-  padding: 3mm;
+  margin-bottom: 3mm;
+  padding: 2mm;
 }
 
 .today-note-top {
-  display: grid;
-  grid-template-columns: 26mm 1fr;
-  gap: 2mm;
+  display: flex;
   align-items: center;
+  gap: 2mm;
   margin-bottom: 2mm;
 }
 
 .today-note-label {
+  flex: 0 0 26mm;
   font-size: 3.4mm;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .today-note-short {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
   height: 9mm;
-  border: 1px solid var(--line);
-  border-radius: 2mm;
-  padding: 0 2.5mm;
+  border: none;
+  padding: 2.0mm;
   font-size: 3mm;
   color: var(--text);
-  background: #fff;
+  background: #f0f0f0;
   outline: none;
 }
 
 .today-note-long {
   width: 100%;
-  min-height: 28mm;
+  min-height: 30mm;
   resize: none;
-  border: 1px solid var(--line);
-  border-radius: 2mm;
-  padding: 2.5mm;
+  border: none;
+  padding: 2.0mm;
   font-size: 3mm;
   line-height: 1.4;
   color: var(--text);
-  background: #fff;
+  background: #f0f0f0;
   outline: none;
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 .today-note-short::placeholder,
@@ -586,28 +583,30 @@ body {
 }
 
 /* =========================
-   12) Mobile
+   12) 모바일
    ========================= */
 @media (max-width: 768px) {
+  .today-note-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
 
-   .today-note-top {
-  grid-template-columns: 1fr;
-  gap: 6px;
-}
+  .today-note-label {
+    flex: none;
+    font-size: 14px;
+  }
 
-.today-note-label {
-  font-size: 14px;
-}
+  .today-note-short {
+    height: 38px;
+    font-size: 13px;
+  }
 
-.today-note-short {
-  height: 38px;
-  font-size: 13px;
-}
-
-.today-note-long {
-  min-height: 100px;
-  font-size: 13px;
-}
+  .today-note-long {
+    min-height: 100px;
+    font-size: 13px;
+  }
+   
   .forecast-grid {
     grid-template-columns: 1fr;
   }
