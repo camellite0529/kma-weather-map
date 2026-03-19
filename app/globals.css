@@ -15,7 +15,7 @@ body { min-height: 100vh; }
 .today-note-top { display: flex; align-items: center; gap: 3mm; margin-bottom: 1.4mm; }
 .today-note-title { font-size: 4.8mm; font-weight: 700; white-space: nowrap; }
 .today-note-short { flex: 1 1 auto; height: 9mm; border: none; background: transparent; font-family: inherit; font-size: 4.8mm; font-weight: 700; line-height: 1.1; outline: none; padding: 0; }
-.today-note-long { width: 100%; min-height: 22mm; resize: none; border: none; background: transparent; font-family: inherit; font-size: 3.4mm; line-height: 1.45; outline: none; padding: 0; }
+.today-note-long { width: 100%; min-height: 18mm; resize: none; border: none; background: transparent; font-family: inherit; font-size: 3.4mm; line-height: 1.45; outline: none; padding: 0; }
 .today-note-short::placeholder, .today-note-long::placeholder { color: #777; font-family: inherit; }
 .warning-card { margin-bottom: 3mm; }
 .warning-card h2 { margin: 0 0 1.5mm; font-size: 4.3mm; }
@@ -26,10 +26,22 @@ body { min-height: 100vh; }
 .map-shell { width: 100%; }
 .map-stage { position: relative; width: 100%; aspect-ratio: 1296 / 2013; overflow: hidden; background: #ececec; border-radius: 2mm; border: 1px solid rgba(0, 0, 0, 0.08); }
 .map-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
-.map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 2; min-width: 17.6mm; max-width: 25mm; }
+.map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 2; min-width: 17.6mm; max-width: 26mm; }
 .marker-card { display: flex; flex-direction: column; gap: 0.25mm; padding: 0.85mm 1.15mm; border-radius: 1.8mm; background: rgba(255, 255, 255, 0.96); color: #111111; border: 1px solid rgba(0, 0, 0, 0.10); }
-.marker-weather { font-size: 4.5mm; font-weight: 700; line-height: 1; }
-.marker-line { display: flex; flex-wrap: nowrap; gap: 0.7mm; align-items: center; white-space: nowrap; font-size: 3.5mm; line-height: 1.05; }
+.marker-weather {
+  font-size: 4.5mm;     
+  font-weight: 500; 
+  line-height: 1.05;
+}
+.marker-line {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.8mm;           
+  align-items: center;
+  white-space: nowrap;
+  font-size: 3.3mm;    
+  line-height: 1.1;
+}
 .marker-city { font-weight: 800; white-space: nowrap; }
 .marker-temp { color: #333333; white-space: nowrap; }
 
