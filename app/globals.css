@@ -29,29 +29,31 @@ body { min-height: 100vh; }
 .map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 2; min-width: 17.6mm; max-width: 25mm; }
 .marker-card { display: flex; flex-direction: column; gap: 0.25mm; padding: 0.85mm 1.15mm; border-radius: 1.8mm; background: rgba(255, 255, 255, 0.96); color: #111111; border: 1px solid rgba(0, 0, 0, 0.10); }
 .marker-weather { font-size: 3.5mm; font-weight: 700; line-height: 1; }
-.marker-line { display: flex; flex-wrap: nowrap; gap: 0.7mm; align-items: center; white-space: nowrap; font-size: 2.5mm; line-height: 1.05; }
+.marker-line { display: flex; flex-wrap: nowrap; gap: 0.7mm; align-items: center; white-space: nowrap; font-size: 3.5mm; line-height: 1.05; }
 .marker-city { font-weight: 800; white-space: nowrap; }
 .marker-temp { color: #333333; white-space: nowrap; }
+
 .astro-card { padding: 1.8mm 2.4mm; background: #eef1f6; border-radius: 2mm; }
-.astro-row { display: grid; grid-template-columns: 4mm 8mm 1fr 8mm 1fr; align-items: center; gap: 1mm; font-size: 2.8mm; line-height: 1.15; }
+.astro-row { display: grid; grid-template-columns: 4mm 8mm 1fr 8mm 1fr; align-items: center; gap: 1mm; font-size: 3.5mm; line-height: 1.15; }
 .astro-row + .astro-row { margin-top: 1mm; }
-.astro-icon { display: inline-flex; align-items: center; justify-content: center; font-size: 3.2mm; }
+.astro-icon { display: inline-flex; align-items: center; justify-content: center; font-size: 3.5mm; }
 .astro-icon-sun { color: #d18b00; }
 .astro-icon-moon { color: #8a6fb8; }
 .astro-label { white-space: nowrap; color: var(--muted); font-weight: 700; }
 .astro-label-right { text-align: right; }
 .astro-time { white-space: nowrap; font-weight: 700; color: var(--text); }
+
 .precip-card { padding: 0; }
 .precip-card .section-header { align-items: center; flex-wrap: nowrap; gap: 2mm; }
-.precip-card .section-header h2 { margin: 0; font-size: 4.25mm; line-height: 1.05; white-space: nowrap; flex-shrink: 0; }
-.precip-legend { display: flex; gap: 2mm; font-size: 2.6mm; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.precip-card .section-header h2 { margin: 0; font-size: 4.5mm; line-height: 1.05; white-space: nowrap; flex-shrink: 0; }
+.precip-legend { display: flex; gap: 2mm; font-size: 3mm; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 .precip-values {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   gap: 0.45mm;
-  font-size: 2.1mm;
+  font-size: 3mm;
   white-space: nowrap;
 }
 .legend-item { display: inline-flex; align-items: center; gap: 0.7mm; white-space: nowrap; }
@@ -67,7 +69,7 @@ body { min-height: 100vh; }
   gap: 2.2mm;
   align-items: center;
 }
-.precip-label { font-size: 2.5mm; font-weight: 700; white-space: nowrap; }
+.precip-label { font-size: 3mm; font-weight: 700; white-space: nowrap; }
 .precip-track { position: relative; height: 7mm; border-left: 1px solid var(--line); background-image: repeating-linear-gradient( to right, transparent 0, transparent calc(20% - 1px), rgba(0, 0, 0, 0.12) calc(20% - 1px), rgba(0, 0, 0, 0.12) 20% ); }
 .precip-bar { position: absolute; left: 0; }
 .precip-bar-am { top: 1.05mm; height: 1.8mm; background: var(--am); }
@@ -84,13 +86,15 @@ body { min-height: 100vh; }
 .forecast-table-grid th { width: 10mm; font-weight: 700; }
 .forecast-table-grid tr:last-child th, 
 .forecast-table-grid tr:last-child td { border-bottom: none; }
+
+
 .dust-card { grid-column: 1 / -1; padding-top: 1mm; }
 .dust-header { align-items: center; }
 .dust-time { font-size: 2.55mm; color: var(--muted); white-space: nowrap; }
 .dust-table { display: flex; flex-direction: column; gap: 1.6mm; margin-top: 1.4mm; }
 .dust-table-head, .dust-table-row { display: grid; grid-template-columns: 18mm repeat(12, minmax(0, 1fr)); gap: 1.2mm; align-items: center; }
 .dust-left-spacer { height: 1px; }
-.dust-col-head { font-size: 2.55mm; text-align: center; line-height: 1.15; white-space: pre-line; word-break: keep-all; }
+.dust-col-head { font-size: 3mm; text-align: center; line-height: 1.15; white-space: pre-line; word-break: keep-all; }
 .dust-row-label { font-size: 3mm; font-weight: 700; white-space: nowrap; }
 .dust-cell { display: flex; justify-content: center; align-items: center; }
 .dust-circle { width: 3.2mm; height: 3.2mm; border-radius: 50%; display: inline-block; }
@@ -98,7 +102,7 @@ body { min-height: 100vh; }
 .dust-normal { background: #38a169; }
 .dust-bad { background: #d69e2e; }
 .dust-very-bad { background: #e53e3e; }
-.dust-legend { display: flex; justify-content: flex-end; gap: 4mm; margin-top: 2mm; font-size: 2.55mm; }
+.dust-legend { display: flex; justify-content: flex-end; gap: 4mm; margin-top: 2mm; font-size: 3mm; }
 .dust-legend span { display: inline-flex; align-items: center; gap: 0.9mm; }
 .error-card { margin-top: 10mm; }
 
