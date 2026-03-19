@@ -80,7 +80,6 @@ function AstroCard({
         <span className="astro-label astro-label-right">해짐</span>
         <span className="astro-time">{sunset ?? "-"}</span>
       </div>
-
       <div className="astro-row">
         <span className="astro-icon astro-icon-moon">☾</span>
         <span className="astro-label">달뜸</span>
@@ -99,19 +98,17 @@ function PrecipChart({ rows }: { rows: CityWeather[] }) {
     <section className="card precip-card">
       <div className="section-header section-header-tight">
         <h2>눈·비올 확률(%)</h2>
-        <div className="precip-legend">
+        <div className="precip-legend" aria-hidden="true">
           <span className="legend-item">
-            <span className="legend-swatch legend-swatch-am" />
-            오전
+            <span className="legend-swatch legend-swatch-am" />오전
           </span>
           <span className="legend-item">
-            <span className="legend-swatch legend-swatch-pm" />
-            오후
+            <span className="legend-swatch legend-swatch-pm" />오후
           </span>
         </div>
       </div>
 
-      <div className="precip-scale">
+      <div className="precip-scale" aria-hidden="true">
         {ticks.map((tick) => (
           <span key={tick} style={{ left: `${tick}%` }}>
             {tick}
@@ -127,27 +124,23 @@ function PrecipChart({ rows }: { rows: CityWeather[] }) {
           const pmWidth = barWidthPercent(row.tomorrow.pmPop);
 
           return (
-            <div key={`precip-${row.city}`} className="precip-row-item">
+            <div key={row.city} className="precip-row-item">
               <div className="precip-label">{row.city}</div>
-
               <div className="precip-track">
                 {amWidth > 0 ? (
-                  <div
+                  <span
                     className="precip-bar precip-bar-am"
                     style={{ width: `${amWidth}%` }}
-                    title={`${amDisplay}%`}
                   />
                 ) : null}
                 {pmWidth > 0 ? (
-                  <div
+                  <span
                     className="precip-bar precip-bar-pm"
                     style={{ width: `${pmWidth}%` }}
-                    title={`${pmDisplay}%`}
                   />
                 ) : null}
               </div>
-
-              <div className="precip-values" aria-label={`${row.city} 강수확률`}>
+              <div className="precip-values">
                 <span className="precip-value precip-value-am">{amDisplay}%</span>
                 <span className="precip-value precip-value-pm">{pmDisplay}%</span>
               </div>
@@ -174,8 +167,8 @@ function CompactDayTable({
       <table className="forecast-table-grid">
         <tbody>
           {rows.map((row) => (
-            <tr key={`${kind}-${row.city}`}>
-              <th>{row.city}</th>
+            <tr key={`${title}-${row.city}`}>
+              <th scope="row">{row.city}</th>
               <td>
                 {tempText(row[kind].minTemp)} / {tempText(row[kind].maxTemp)}
               </td>
@@ -197,37 +190,38 @@ export default async function Page() {
 
     const tomorrowMap = weather.data;
     const tableRows = weather.data.filter((item) => TABLE_CITIES.includes(item.city));
-    const precipRows = PRECIP_CITIES
-      .map((city) => weather.data.find((item) => item.city === city))
-      .filter((item): item is CityWeather => Boolean(item));
+    const precipRows = PRECIP_CITIES.map((city) =>
+      weather.data.find((item) => item.city === city),
+    ).filter((item): item is CityWeather => Boolean(item));
 
     return (
       <main className="page">
         <div className="a4-sheet">
           <header className="print-head">
-            <div className="print-title-wrap">
-              <h1>지면용 오늘의 날씨</h1>
-            </div>
+            <h1>내일·모레·글피 날씨</h1>
             <div className="print-meta">
               <div>
                 발표기준: {weather.base.baseDate} {weather.base.baseTime}
               </div>
-              <div>업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR")}</div>
+              <div>
+                업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR")}
+              </div>
             </div>
           </header>
 
-          <section className="today-note-section">
+          <section className="card today-note-section">
             <div className="today-note-top">
-              <span className="today-note-title">오늘의 날씨</span>
+              <div className="today-note-title">오늘의 날씨</div>
               <input
-                type="text"
                 className="today-note-short"
-                placeholder="우산 챙기세요"
+                defaultValue=""
+                placeholder="짧은 헤드라인을 입력해 주세요."
               />
             </div>
             <textarea
               className="today-note-long"
-              placeholder="전국이 대체로 흐리고 곳곳에 비가 내리겠다."
+              defaultValue=""
+              placeholder="간단한 메모를 최대 3줄 안에서 남겨 주세요."
             />
           </section>
 
@@ -247,11 +241,9 @@ export default async function Page() {
               <div className="section-header section-header-tight">
                 <h2>전국날씨(℃)</h2>
               </div>
-
               <div className="map-shell">
                 <div className="map-stage">
                   <img src="/map-bg.png" alt="대한민국 지도" className="map-image" />
-
                   {tomorrowMap.map((item) => {
                     const pos = getMarkerPosition(item.city);
                     return (
@@ -283,16 +275,14 @@ export default async function Page() {
                 moonrise={astro.moonrise}
                 moonset={astro.moonset}
               />
-
               <PrecipChart rows={precipRows} />
-
               <section className="card forecast-card">
                 <div className="section-header section-header-tight">
                   <h2>예상날씨(℃)</h2>
                 </div>
                 <div className="forecast-grid">
-                  <CompactDayTable title="내일" rows={tableRows} kind="dayAfterTomorrow" />
-                  <CompactDayTable title="모레" rows={tableRows} kind="threeDaysLater" />
+                  <CompactDayTable title="모레" rows={tableRows} kind="dayAfterTomorrow" />
+                  <CompactDayTable title="글피" rows={tableRows} kind="threeDaysLater" />
                 </div>
               </section>
             </div>

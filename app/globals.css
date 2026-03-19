@@ -584,12 +584,16 @@ body {
   html,
   body {
     width: 210mm;
-    min-height: 297mm;
+    min-width: 210mm;
     margin: 0;
     padding: 0;
     background: #fff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  body {
+    min-height: auto;
   }
 
   .page {
@@ -599,13 +603,34 @@ body {
   }
 
   .a4-sheet {
-    width: 210mm;
-    min-height: 297mm;
+    width: 210mm !important;
+    min-height: 297mm !important;
     margin: 0;
     padding: 5.5mm 5.5mm 6mm;
     box-shadow: none;
-    background: #fff;
-    overflow: hidden;
+  }
+
+  .news-layout {
+    grid-template-columns: minmax(0, 102mm) minmax(0, 1fr) !important;
+    gap: 3mm !important;
+  }
+
+  .right-column {
+    gap: 2.2mm !important;
+  }
+
+  .forecast-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .dust-table {
+    overflow: visible !important;
+  }
+
+  .dust-table-head,
+  .dust-table-row {
+    grid-template-columns: 15mm repeat(12, minmax(0, 1fr)) !important;
+    min-width: 0 !important;
   }
 
   .layout-map,
@@ -613,7 +638,9 @@ body {
   .dust-card,
   .precip-card,
   .forecast-card,
-  .today-note-section {
+  .today-note-section,
+  .map-shell,
+  .map-stage {
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -621,12 +648,10 @@ body {
   .today-note-short,
   .today-note-long {
     color: #111;
-    -webkit-appearance: none;
-    appearance: none;
   }
 }
 
-@media (max-width: 1100px) {
+@media screen and (max-width: 1100px) {
   .a4-sheet {
     width: 100%;
     min-height: auto;
@@ -652,7 +677,7 @@ body {
   }
 }
 
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
   .today-note-top {
     flex-direction: column;
     align-items: stretch;
