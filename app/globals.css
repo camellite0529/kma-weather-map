@@ -53,7 +53,7 @@ body { min-height: 100vh; }
 .precip-scale span { position: absolute; top: 0; transform: translateX(-50%); }
 .precip-chart { display: flex; flex-direction: column; gap: 1.1mm; }
 .precip-row-item { display: grid; grid-template-columns: 13mm 1fr; gap: 2.2mm; align-items: center; }
-.precip-label { font-size: 3.2mm; font-weight: 700; white-space: nowrap; }
+.precip-label { font-size: 2.8mm; font-weight: 700; white-space: nowrap; }
 .precip-track { position: relative; height: 7mm; border-left: 1px solid var(--line); background-image: repeating-linear-gradient( to right, transparent 0, transparent calc(20% - 1px), rgba(0, 0, 0, 0.12) calc(20% - 1px), rgba(0, 0, 0, 0.12) 20% ); }
 .precip-bar { position: absolute; left: 0; }
 .precip-bar-am { top: 1.05mm; height: 1.8mm; background: var(--am); }
