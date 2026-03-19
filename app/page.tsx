@@ -121,27 +121,35 @@ function PrecipChart({ rows }: { rows: CityWeather[] }) {
 
       <div className="precip-chart">
         {rows.map((row) => {
+          const amDisplay = displayPercent(row.tomorrow.amPop);
+          const pmDisplay = displayPercent(row.tomorrow.pmPop);
           const amWidth = barWidthPercent(row.tomorrow.amPop);
           const pmWidth = barWidthPercent(row.tomorrow.pmPop);
 
           return (
             <div key={`precip-${row.city}`} className="precip-row-item">
               <div className="precip-label">{row.city}</div>
+
               <div className="precip-track">
                 {amWidth > 0 ? (
                   <div
                     className="precip-bar precip-bar-am"
                     style={{ width: `${amWidth}%` }}
-                    title={`오전 ${displayPercent(row.tomorrow.amPop)}%`}
+                    title={`오전 ${amDisplay}%`}
                   />
                 ) : null}
                 {pmWidth > 0 ? (
                   <div
                     className="precip-bar precip-bar-pm"
                     style={{ width: `${pmWidth}%` }}
-                    title={`오후 ${displayPercent(row.tomorrow.pmPop)}%`}
+                    title={`오후 ${pmDisplay}%`}
                   />
                 ) : null}
+              </div>
+
+              <div className="precip-values" aria-label={`${row.city} 강수확률`}>
+                <span className="precip-value precip-value-am">오전 {amDisplay}%</span>
+                <span className="precip-value precip-value-pm">오후 {pmDisplay}%</span>
               </div>
             </div>
           );
@@ -201,7 +209,9 @@ export default async function Page() {
               <h1>내일·모레·글피 날씨</h1>
             </div>
             <div className="print-meta">
-              <div>발표기준: {weather.base.baseDate} {weather.base.baseTime}</div>
+              <div>
+                발표기준: {weather.base.baseDate} {weather.base.baseTime}
+              </div>
               <div>업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR")}</div>
             </div>
           </header>
@@ -323,10 +333,18 @@ export default async function Page() {
               </div>
 
               <div className="dust-legend">
-                <span><span className="dust-circle dust-good" />좋음</span>
-                <span><span className="dust-circle dust-normal" />보통</span>
-                <span><span className="dust-circle dust-bad" />나쁨</span>
-                <span><span className="dust-circle dust-very-bad" />매우 나쁨</span>
+                <span>
+                  <span className="dust-circle dust-good" />좋음
+                </span>
+                <span>
+                  <span className="dust-circle dust-normal" />보통
+                </span>
+                <span>
+                  <span className="dust-circle dust-bad" />나쁨
+                </span>
+                <span>
+                  <span className="dust-circle dust-very-bad" />매우 나쁨
+                </span>
               </div>
             </section>
           </div>

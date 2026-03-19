@@ -30,7 +30,7 @@ body {
 }
 
 .page {
-  padding: 12px 0;
+  padding: 10px 0;
 }
 
 .a4-sheet {
@@ -38,7 +38,7 @@ body {
   min-height: 297mm;
   margin: 0 auto;
   background: var(--paper);
-  padding: 6mm 6mm 7mm;
+  padding: 5.5mm 5.5mm 6mm;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.08),
     0 12px 30px rgba(0, 0, 0, 0.08);
@@ -48,22 +48,22 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 8mm;
-  padding-bottom: 2.2mm;
-  margin-bottom: 3mm;
+  gap: 6mm;
+  padding-bottom: 1.8mm;
+  margin-bottom: 2.4mm;
   border-bottom: 1px solid #111;
 }
 
 .print-head h1 {
   margin: 0;
-  font-size: 8.2mm;
+  font-size: 7.4mm;
   line-height: 1.05;
 }
 
 .print-meta {
-  min-width: 55mm;
-  font-size: 2.8mm;
-  line-height: 1.6;
+  min-width: 54mm;
+  font-size: 2.55mm;
+  line-height: 1.45;
   color: var(--muted);
   text-align: right;
 }
@@ -79,44 +79,44 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 3mm;
-  margin-bottom: 2mm;
+  gap: 2.2mm;
+  margin-bottom: 1.6mm;
 }
 
 .section-header-tight {
-  margin-bottom: 1.6mm;
+  margin-bottom: 1.2mm;
 }
 
 .section-header h2 {
   margin: 0;
-  font-size: 4.1mm;
+  font-size: 3.7mm;
   line-height: 1.1;
 }
 
 .today-note-section {
-  margin-bottom: 3.5mm;
+  margin-bottom: 2.4mm;
 }
 
 .today-note-top {
   display: flex;
   align-items: center;
-  gap: 3mm;
-  margin-bottom: 1.4mm;
+  gap: 2.4mm;
+  margin-bottom: 1mm;
 }
 
 .today-note-title {
-  font-size: 4.8mm;
+  font-size: 4.2mm;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .today-note-short {
   flex: 1 1 auto;
-  height: 9mm;
+  height: 7.6mm;
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 4.8mm;
+  font-size: 4.1mm;
   font-weight: 700;
   line-height: 1.1;
   outline: none;
@@ -125,13 +125,16 @@ body {
 
 .today-note-long {
   width: 100%;
-  min-height: 22mm;
+  height: 12.8mm;
+  min-height: 12.8mm;
+  max-height: 12.8mm;
   resize: none;
+  overflow: hidden;
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 3.4mm;
-  line-height: 1.45;
+  font-size: 3mm;
+  line-height: 1.38;
   outline: none;
   padding: 0;
 }
@@ -143,32 +146,34 @@ body {
 }
 
 .warning-card {
-  margin-bottom: 3mm;
+  margin-bottom: 2.2mm;
 }
 
 .warning-card h2 {
-  margin: 0 0 1.5mm;
-  font-size: 4mm;
+  margin: 0 0 1mm;
+  font-size: 3.5mm;
 }
 
 .warning-list {
   margin: 0;
   padding-left: 4mm;
   color: var(--muted);
-  font-size: 2.8mm;
+  font-size: 2.45mm;
+  line-height: 1.3;
 }
 
 .news-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.72fr);
-  gap: 4mm;
+  grid-template-columns: minmax(0, 102mm) minmax(0, 1fr);
+  gap: 3mm;
   align-items: start;
 }
 
 .right-column {
   display: flex;
   flex-direction: column;
-  gap: 3mm;
+  gap: 2.2mm;
+  min-width: 0;
 }
 
 .layout-map {
@@ -185,7 +190,7 @@ body {
   aspect-ratio: 1296 / 2090;
   overflow: hidden;
   background: #ececec;
-  border-radius: 2mm;
+  border-radius: 1.8mm;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -202,23 +207,23 @@ body {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 2;
-  min-width: 17mm;
-  max-width: 24mm;
+  min-width: 14.5mm;
+  max-width: 20.5mm;
 }
 
 .marker-card {
   display: flex;
   flex-direction: column;
-  gap: 0.35mm;
-  padding: 0.9mm 1.2mm;
-  border-radius: 1.8mm;
+  gap: 0.25mm;
+  padding: 0.75mm 1mm;
+  border-radius: 1.6mm;
   background: rgba(255, 255, 255, 0.96);
   color: #111111;
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .marker-weather {
-  font-size: 3.2mm;
+  font-size: 2.8mm;
   font-weight: 700;
   line-height: 1;
 }
@@ -226,10 +231,10 @@ body {
 .marker-line {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.7mm;
+  gap: 0.6mm;
   align-items: center;
   white-space: nowrap;
-  font-size: 2.15mm;
+  font-size: 1.95mm;
   line-height: 1.05;
 }
 
@@ -244,29 +249,29 @@ body {
 }
 
 .astro-card {
-  padding: 1.8mm 2.4mm;
+  padding: 1.6mm 2.1mm;
   background: #eef1f6;
-  border-radius: 2mm;
+  border-radius: 1.8mm;
 }
 
 .astro-row {
   display: grid;
-  grid-template-columns: 4mm 8mm 1fr 8mm 1fr;
+  grid-template-columns: 3.4mm 6.8mm 1fr 6.8mm 1fr;
   align-items: center;
-  gap: 1mm;
-  font-size: 2.5mm;
-  line-height: 1.15;
+  gap: 0.8mm;
+  font-size: 2.25mm;
+  line-height: 1.12;
 }
 
 .astro-row + .astro-row {
-  margin-top: 1mm;
+  margin-top: 0.8mm;
 }
 
 .astro-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 3mm;
+  font-size: 2.7mm;
 }
 
 .astro-icon-sun {
@@ -300,12 +305,12 @@ body {
 .precip-card .section-header {
   align-items: center;
   flex-wrap: nowrap;
-  gap: 2mm;
+  gap: 1.6mm;
 }
 
 .precip-card .section-header h2 {
   margin: 0;
-  font-size: 4.0mm;
+  font-size: 3.6mm;
   line-height: 1.05;
   white-space: nowrap;
   flex-shrink: 0;
@@ -313,8 +318,8 @@ body {
 
 .precip-legend {
   display: flex;
-  gap: 2mm;
-  font-size: 2.4mm;
+  gap: 1.4mm;
+  font-size: 2.15mm;
   color: var(--muted);
   white-space: nowrap;
   flex-shrink: 0;
@@ -323,14 +328,14 @@ body {
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.7mm;
+  gap: 0.6mm;
   white-space: nowrap;
 }
 
 .legend-swatch {
   display: inline-block;
-  width: 3.2mm;
-  height: 1.6mm;
+  width: 3mm;
+  height: 1.4mm;
 }
 
 .legend-swatch-am {
@@ -343,9 +348,9 @@ body {
 
 .precip-scale {
   position: relative;
-  height: 3mm;
-  margin: 0 0 0.6mm 16mm;
-  font-size: 2.2mm;
+  height: 2.6mm;
+  margin: 0 14.5mm 0.45mm 11.5mm;
+  font-size: 2mm;
   color: var(--muted);
 }
 
@@ -358,25 +363,25 @@ body {
 .precip-chart {
   display: flex;
   flex-direction: column;
-  gap: 1.1mm;
+  gap: 0.9mm;
 }
 
 .precip-row-item {
   display: grid;
-  grid-template-columns: 13mm 1fr;
-  gap: 2.2mm;
+  grid-template-columns: 10mm 1fr 14mm;
+  gap: 1.5mm;
   align-items: center;
 }
 
 .precip-label {
-  font-size: 3mm;
+  font-size: 2.55mm;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .precip-track {
   position: relative;
-  height: 7mm;
+  height: 6.2mm;
   border-left: 1px solid var(--line);
   background-image: repeating-linear-gradient(
     to right,
@@ -393,38 +398,59 @@ body {
 }
 
 .precip-bar-am {
-  top: 1.05mm;
-  height: 1.8mm;
+  top: 0.95mm;
+  height: 1.55mm;
   background: var(--am);
 }
 
 .precip-bar-pm {
-  bottom: 1.05mm;
-  height: 1.8mm;
+  bottom: 0.95mm;
+  height: 1.55mm;
   background: var(--pm);
 }
 
+.precip-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35mm;
+  font-size: 2.05mm;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.precip-value {
+  display: block;
+}
+
+.precip-value-am {
+  color: #5877b5;
+}
+
+.precip-value-pm {
+  color: #355493;
+}
+
 .forecast-card {
-  padding-top: 0.6mm;
+  padding-top: 0.2mm;
 }
 
 .forecast-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2.2mm;
+  gap: 1.8mm;
 }
 
 .forecast-table {
-  border-radius: 2mm;
+  border-radius: 1.8mm;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .forecast-table-title {
   background: #efefef;
-  font-size: 3mm;
+  font-size: 2.7mm;
   font-weight: 700;
-  padding: 1mm 1.6mm;
+  padding: 0.85mm 1.2mm;
   line-height: 1.1;
 }
 
@@ -436,16 +462,16 @@ body {
 
 .forecast-table-grid th,
 .forecast-table-grid td {
-  padding: 0.9mm 1.4mm;
-  font-size: 2.55mm;
-  line-height: 1.1;
+  padding: 0.75mm 1.1mm;
+  font-size: 2.3mm;
+  line-height: 1.08;
   white-space: nowrap;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .forecast-table-grid th {
-  width: 10mm;
+  width: 8mm;
   font-weight: 700;
 }
 
@@ -456,7 +482,7 @@ body {
 
 .dust-card {
   grid-column: 1 / -1;
-  padding-top: 1mm;
+  padding-top: 0.4mm;
 }
 
 .dust-header {
@@ -464,7 +490,7 @@ body {
 }
 
 .dust-time {
-  font-size: 2.4mm;
+  font-size: 2.2mm;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -472,15 +498,15 @@ body {
 .dust-table {
   display: flex;
   flex-direction: column;
-  gap: 1.6mm;
-  margin-top: 1.4mm;
+  gap: 1.3mm;
+  margin-top: 1mm;
 }
 
 .dust-table-head,
 .dust-table-row {
   display: grid;
-  grid-template-columns: 18mm repeat(12, minmax(0, 1fr));
-  gap: 1.2mm;
+  grid-template-columns: 15mm repeat(12, minmax(0, 1fr));
+  gap: 1mm;
   align-items: center;
 }
 
@@ -489,15 +515,15 @@ body {
 }
 
 .dust-col-head {
-  font-size: 2.35mm;
+  font-size: 2.15mm;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.1;
   white-space: pre-line;
   word-break: keep-all;
 }
 
 .dust-row-label {
-  font-size: 2.8mm;
+  font-size: 2.45mm;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -509,8 +535,8 @@ body {
 }
 
 .dust-circle {
-  width: 3.2mm;
-  height: 3.2mm;
+  width: 2.9mm;
+  height: 2.9mm;
   border-radius: 50%;
   display: inline-block;
 }
@@ -534,15 +560,15 @@ body {
 .dust-legend {
   display: flex;
   justify-content: flex-end;
-  gap: 4mm;
-  margin-top: 2mm;
-  font-size: 2.4mm;
+  gap: 3mm;
+  margin-top: 1.5mm;
+  font-size: 2.2mm;
 }
 
 .dust-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 0.9mm;
+  gap: 0.8mm;
 }
 
 .error-card {
@@ -551,13 +577,15 @@ body {
 
 @page {
   size: A4 portrait;
-  margin: 8mm;
+  margin: 6mm;
 }
 
 @media print {
   html,
   body {
     background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .page {
@@ -574,9 +602,17 @@ body {
 
   .layout-map,
   .right-column,
-  .dust-card {
+  .dust-card,
+  .precip-card,
+  .forecast-card,
+  .today-note-section {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .today-note-short,
+  .today-note-long {
+    color: #111;
   }
 }
 
@@ -592,7 +628,7 @@ body {
   }
 
   .right-column {
-    gap: 20px;
+    gap: 18px;
   }
 
   .dust-table-head,
@@ -623,7 +659,8 @@ body {
   }
 
   .today-note-long {
-    min-height: 100px;
+    min-height: 72px;
+    max-height: none;
     font-size: 13px;
   }
 
@@ -649,6 +686,10 @@ body {
     grid-template-columns: 16px 34px 1fr 34px 1fr;
   }
 
+  .precip-card .section-header {
+    flex-wrap: wrap;
+  }
+
   .precip-card .section-header h2 {
     font-size: 14px;
   }
@@ -657,8 +698,21 @@ body {
     font-size: 10px;
   }
 
+  .precip-scale {
+    margin: 0 0 6px 44px;
+  }
+
   .precip-row-item {
     grid-template-columns: 44px 1fr;
+    row-gap: 4px;
+  }
+
+  .precip-values {
+    grid-column: 2;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 10px;
   }
 
   .precip-label {
