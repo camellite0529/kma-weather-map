@@ -24,12 +24,12 @@ body { min-height: 100vh; }
 .right-column { display: flex; flex-direction: column; gap: 3mm; }
 .layout-map { min-height: 0; }
 .map-shell { width: 100%; }
-.map-stage { position: relative; width: 100%; aspect-ratio: 1296 / 2090; overflow: hidden; background: #ececec; border-radius: 2mm; border: 1px solid rgba(0, 0, 0, 0.08); }
+.map-stage { position: relative; width: 100%; aspect-ratio: 1296 / 2013; overflow: hidden; background: #ececec; border-radius: 2mm; border: 1px solid rgba(0, 0, 0, 0.08); }
 .map-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 2; min-width: 17.6mm; max-width: 25mm; }
 .marker-card { display: flex; flex-direction: column; gap: 0.25mm; padding: 0.85mm 1.15mm; border-radius: 1.8mm; background: rgba(255, 255, 255, 0.96); color: #111111; border: 1px solid rgba(0, 0, 0, 0.10); }
 .marker-weather { font-size: 3.5mm; font-weight: 700; line-height: 1; }
-.marker-line { display: flex; flex-wrap: nowrap; gap: 0.7mm; align-items: center; white-space: nowrap; font-size: 2.35mm; line-height: 1.05; }
+.marker-line { display: flex; flex-wrap: nowrap; gap: 0.7mm; align-items: center; white-space: nowrap; font-size: 2.5mm; line-height: 1.05; }
 .marker-city { font-weight: 800; white-space: nowrap; }
 .marker-temp { color: #333333; white-space: nowrap; }
 .astro-card { padding: 1.8mm 2.4mm; background: #eef1f6; border-radius: 2mm; }
