@@ -161,47 +161,180 @@ export function getTargetDate(offsetDays: number) {
   return `${yyyy}${mm}${dd}`;
 }
 
-export function skyCodeToText(value: string | number | null | undefined) {
+export function skyCodeToText(
+  value: string | number | null | undefined,
+): WeatherLabel | null {
   const code = String(value ?? "");
+
   if (code === "1") return "맑음";
+  if (code === "2") return "구름조금";
   if (code === "3") return "구름많음";
   if (code === "4") return "흐림";
+
   return null;
 }
 
-export function ptyCodeToText(value: string | number | null | undefined) {
+export function ptyCodeToText(
+  value: string | number | null | undefined,
+): WeatherLabel | null {
   const code = String(value ?? "0");
 
-  if (["1", "4", "5"].includes(code)) return "비";
-  if (["2", "6"].includes(code)) return "비/눈";
-  if (["3", "7"].includes(code)) return "눈";
+  if (code === "1" || code === "5") return "비";
+  if (code === "2" || code === "4" || code === "6") return "비나눈";
+  if (code === "3" || code === "7") return "눈";
 
   return null;
+}
+
+function pickClosestByTime<T extends ForecastItem>(items: T[], targetTime: number) {
+  return [...items].sort((a, b) => {
+    const diffA = Math.abs(Number(a.fcstTime) - targetTime);
+    const diffB = Math.abs(Number(b.fcstTime) - targetTime);
+    return diffA - diffB;
+  })[0];
+}
+
+function isClearGroup(label: WeatherLabel | null): boolean {
+  return label === "맑음" || label === "구름조금";
+}
+
+function isCloudGroup(label: WeatherLabel | null): boolean {
+  return label === "구름많음" || label === "흐림";
+}
+
+function isSkyGroup(label: WeatherLabel | null): boolean {
+  return (
+    label === "맑음" ||
+    label === "구름조금" ||
+    label === "구름많음" ||
+    label === "흐림"
+  );
+}
+
+function pickHalfDayWeather(
+  dayItems: ForecastItem[],
+  startTime: number,
+  endTime: number,
+  targetTime: number,
+): WeatherLabel | null {
+  const halfItems = dayItems.filter((item) => {
+    const time = Number(item.fcstTime);
+    return Number.isFinite(time) && time >= startTime && time < endTime;
+  });
+
+  const ptyItems = halfItems.filter(
+    (item) => item.category === "PTY" && String(item.fcstValue) !== "0",
+  );
+
+  if (ptyItems.length) {
+    const pickedPty = pickClosestByTime(ptyItems, targetTime);
+    return ptyCodeToText(pickedPty?.fcstValue);
+  }
+
+  const skyItems = halfItems.filter((item) => item.category === "SKY");
+  if (skyItems.length) {
+    const pickedSky = pickClosestByTime(skyItems, targetTime);
+    return skyCodeToText(pickedSky?.fcstValue);
+  }
+
+  return null;
+}
+
+function mergeMorningAfternoonWeather(
+  morning: WeatherLabel | null,
+  afternoon: WeatherLabel | null,
+): WeatherLabel | null {
+  if (!morning && !afternoon) return null;
+  if (morning && !afternoon) return morning;
+  if (!morning && afternoon) return afternoon;
+
+  if (morning === afternoon) return morning;
+
+  // direct group compression
+  if (
+    (morning === "맑음" && afternoon === "구름조금") ||
+    (morning === "구름조금" && afternoon === "맑음")
+  ) {
+    return "구름조금";
+  }
+
+  if (isCloudGroup(morning) && isCloudGroup(afternoon)) {
+    return "흐림";
+  }
+
+  // precipitation combinations
+  if (morning === "비" && afternoon === "비나눈") {
+    return "비나눈";
+  }
+
+  if (
+    (morning === "비나눈" || morning === "눈") &&
+    afternoon === "비"
+  ) {
+    return "비나눈";
+  }
+
+  if (
+    (morning === "비나눈" || morning === "비") &&
+    afternoon === "눈"
+  ) {
+    return "비나눈";
+  }
+
+  // sky -> sky transitions
+  if (isClearGroup(morning) && isCloudGroup(afternoon)) {
+    return "차차흐림";
+  }
+
+  if (isCloudGroup(morning) && isClearGroup(afternoon)) {
+    return "흐린후갬";
+  }
+
+  // sky -> precipitation
+  if (isSkyGroup(morning) && (afternoon === "비" || afternoon === "비나눈")) {
+    return "흐린후비";
+  }
+
+  if (isSkyGroup(morning) && afternoon === "눈") {
+    return "눈";
+  }
+
+  // precipitation -> sky
+  if ((morning === "비" || morning === "비나눈") && isSkyGroup(afternoon)) {
+    return "비후갬";
+  }
+
+  if (
+    morning === "눈" &&
+    (isSkyGroup(afternoon) || afternoon === "비나눈")
+  ) {
+    return "눈";
+  }
+
+  // safe fallbacks
+  if (afternoon === "눈") return "눈";
+  if (afternoon === "비나눈") return "비나눈";
+  if (afternoon === "비") return "비";
+  if (isCloudGroup(afternoon)) return "흐림";
+  if (afternoon === "구름조금") return "구름조금";
+  if (afternoon === "구름많음") return "구름많음";
+  if (afternoon === "맑음") return "맑음";
+
+  return morning;
 }
 
 function pickRepresentativeWeather(
   items: ForecastItem[],
   targetDate: string,
-): string | null {
+): WeatherLabel | null {
   const dayItems = items.filter((item) => item.fcstDate === targetDate);
 
-  const ptyItems = dayItems.filter((item) => item.category === "PTY");
-  const nonZeroPtyItems = ptyItems.filter((item) => String(item.fcstValue) !== "0");
-  const pickedPty = nonZeroPtyItems.sort((a, b) => {
-    const diffA = Math.abs(Number(a.fcstTime) - 1200);
-    const diffB = Math.abs(Number(b.fcstTime) - 1200);
-    return diffA - diffB;
-  })[0];
+  const morning = pickHalfDayWeather(dayItems, 600, 1200, 900);
+  const afternoon = pickHalfDayWeather(dayItems, 1200, 2400, 1500);
 
-  const skyItems = dayItems.filter((item) => item.category === "SKY");
-  const pickedSky = skyItems.sort((a, b) => {
-    const diffA = Math.abs(Number(a.fcstTime) - 1200);
-    const diffB = Math.abs(Number(b.fcstTime) - 1200);
-    return diffA - diffB;
-  })[0];
-
-  return ptyCodeToText(pickedPty?.fcstValue) ?? skyCodeToText(pickedSky?.fcstValue);
+  return mergeMorningAfternoonWeather(morning, afternoon);
 }
+
 
 function getPrecipCategoryItems(dayItems: ForecastItem[]) {
   return dayItems.filter(
