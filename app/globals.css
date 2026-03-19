@@ -53,10 +53,10 @@ body {
 .print-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8mm;
   padding-bottom: 3mm;
-  margin-bottom: 3mm;
+  margin-bottom: 4mm;
   border-bottom: 1px solid #111;
 }
 
@@ -230,7 +230,7 @@ body {
 }
 
 /* =========================
-   6) 강수확률
+   6) 강수확률 
    ========================= */
 .precip-card .section-header {
   align-items: center;
@@ -381,7 +381,7 @@ body {
 .compact-table {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 2mm;
+  border-radius: 2.0mm;
   overflow: hidden;
 }
 
@@ -437,28 +437,46 @@ body {
   align-items: center;
 }
 
-.dust-time {
-  font-size: 2.5mm;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.dust-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 2.4mm 4mm;
+.dust-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
   margin-top: 1.5mm;
 }
 
-.dust-item {
-  display: flex;
+.dust-table-head,
+.dust-table-row {
+  display: grid;
+  grid-template-columns: 16mm repeat(12, minmax(0, 1fr));
+  gap: 1.6mm;
   align-items: center;
-  gap: 1.2mm;
-  min-width: 0;
+}
+
+.dust-left-spacer {
+  height: 1px;
+}
+
+.dust-col-head {
+  font-size: 2.5mm;
+  text-align: center;
+  line-height: 1.15;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+.dust-row-label {
+  font-size: 2.7mm;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dust-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .dust-circle {
-  flex: 0 0 3.2mm;
   width: 3.2mm;
   height: 3.2mm;
   border-radius: 50%;
@@ -480,15 +498,18 @@ body {
   background: #e53935;
 }
 
-.dust-region {
-  font-size: 2.7mm;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.dust-grade {
+.dust-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4mm;
   font-size: 2.5mm;
   color: var(--muted);
+}
+
+.dust-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1mm;
   white-space: nowrap;
 }
 
@@ -558,14 +579,28 @@ body {
     grid-column: auto;
   }
 
-  .print-head {
-    flex-direction: column;
-  }
+.print-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8mm;
+  padding-bottom: 3mm;
+  margin-bottom: 3mm;
+  border-bottom: 1px solid #111;
+}
 
-  .print-meta {
-    min-width: 100%;
-    text-align: left;
-  }
+.print-head h1 {
+  margin: 0;
+  font-size: 8.5mm;
+  line-height: 1.1;
+}
+
+.print-meta {
+  min-width: 55mm;
+  font-size: 3mm;
+  line-height: 1.65;
+  color: var(--muted);
+  text-align: right;
 }
 
 /* =========================
@@ -595,10 +630,8 @@ body {
   width: auto;
   height: 9mm;
   border: none;
-  padding: 2mm;
-  font-family: inherit;
+  padding: 2.0mm;
   font-size: 3mm;
-  line-height: 1.4;
   color: var(--text);
   background: #f0f0f0;
   outline: none;
@@ -609,8 +642,7 @@ body {
   min-height: 30mm;
   resize: none;
   border: none;
-  padding: 2mm;
-  font-family: inherit;
+  padding: 2.0mm;
   font-size: 3mm;
   line-height: 1.4;
   color: var(--text);
@@ -621,11 +653,11 @@ body {
 .today-note-short::placeholder,
 .today-note-long::placeholder {
   color: #999;
-  font-family: inherit;
+}
 }
 
 /* =========================
-   13) 모바일
+   12) 모바일
    ========================= */
 @media (max-width: 768px) {
   .today-note-top {
@@ -648,7 +680,7 @@ body {
     min-height: 100px;
     font-size: 13px;
   }
-
+   
   .forecast-grid {
     grid-template-columns: 1fr;
   }
@@ -713,20 +745,24 @@ body {
     padding: 4px 6px;
   }
 
-  .dust-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
+  .dust-table-head,
+  .dust-table-row {
+    grid-template-columns: 48px repeat(6, minmax(0, 1fr));
+    gap: 6px;
   }
 
-  .dust-time {
+  .dust-col-head {
     font-size: 10px;
   }
 
-  .dust-region {
-    font-size: 11px;
+  .dust-row-label {
+    font-size: 10px;
   }
 
-  .dust-grade {
+  .dust-legend {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
     font-size: 10px;
   }
 }
