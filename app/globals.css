@@ -72,14 +72,18 @@ body { min-height: 100vh; }
 .precip-bar { position: absolute; left: 0; }
 .precip-bar-am { top: 1.05mm; height: 1.8mm; background: var(--am); }
 .precip-bar-pm { bottom: 1.05mm; height: 1.8mm; background: var(--pm); }
+
+//예상날씨 카드//
 .forecast-card { padding-top: 0.6mm; }
 .forecast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.2mm; }
 .forecast-table { border-radius: 2mm; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.08); }
-.forecast-table-title { background: #efefef; font-size: 3.2mm; font-weight: 700; padding: 1mm 1.6mm; line-height: 1.1; }
+.forecast-table-title { background: #efefef; font-size: 3.3mm; font-weight: 700; padding: 1mm 1.6mm; line-height: 1.1; }
 .forecast-table-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.forecast-table-grid th, .forecast-table-grid td { padding: 0.9mm 1.4mm; font-size: 2.75mm; line-height: 1.1; white-space: nowrap; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+.forecast-table-grid th, 
+.forecast-table-grid td { padding: 0.9mm 1.4mm; font-size: 3.0mm; line-height: 1.1; white-space: nowrap; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
 .forecast-table-grid th { width: 10mm; font-weight: 700; }
-.forecast-table-grid tr:last-child th, .forecast-table-grid tr:last-child td { border-bottom: none; }
+.forecast-table-grid tr:last-child th, 
+.forecast-table-grid tr:last-child td { border-bottom: none; font-size: 2.9mm; }
 .dust-card { grid-column: 1 / -1; padding-top: 1mm; }
 .dust-header { align-items: center; }
 .dust-time { font-size: 2.55mm; color: var(--muted); white-space: nowrap; }
@@ -97,6 +101,7 @@ body { min-height: 100vh; }
 .dust-legend { display: flex; justify-content: flex-end; gap: 4mm; margin-top: 2mm; font-size: 2.55mm; }
 .dust-legend span { display: inline-flex; align-items: center; gap: 0.9mm; }
 .error-card { margin-top: 10mm; }
+
 @page { size: A4 portrait; margin: 8mm; }
 @media print {
   html, body { background: #fff; }
