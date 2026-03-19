@@ -70,7 +70,7 @@ function worstOf(levels: DustLevel[]) {
 
 function pickRegionGrade(informGrade: string, alias: string): DustLevel | null {
   const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`${escaped}\\s*[:：]\\s*(좋음|보통|나쁨|매우나쁨|매우 나쁨)`);
+  const regex = new RegExp(`${escaped}\s*[:：]\s*(좋음|보통|나쁨|매우나쁨|매우 나쁨)`);
   const match = informGrade.match(regex);
   if (!match?.[1]) return null;
   return normalizeDustLevel(match[1]);
@@ -84,6 +84,7 @@ async function fetchForecast(informCode: "PM10" | "PM25") {
   }
 
   const serviceKey = normalizeServiceKey(rawKey);
+
   const params = new URLSearchParams({
     returnType: "json",
     numOfRows: "100",
@@ -111,7 +112,11 @@ async function fetchForecast(informCode: "PM10" | "PM25") {
     throw new Error(`${informCode} 예보 데이터가 비어 있습니다.`);
   }
 
-  return items.sort((a, b) => `${b.informData ?? ""}|${b.dataTime ?? ""}`.localeCompare(`${a.informData ?? ""}|${a.dataTime ?? ""}`))[0];
+  return items.sort((a, b) =>
+    `${b.informData ?? ""}|${b.dataTime ?? ""}`.localeCompare(
+      `${a.informData ?? ""}|${a.dataTime ?? ""}`
+    )
+  )[0];
 }
 
 export async function getDustData() {
@@ -126,8 +131,16 @@ export async function getDustData() {
   const regions: DustRegionItem[] = REGION_GROUPS.map((group) => ({
     region: group.region,
     displayLabel: group.displayLabel,
-    pm10: worstOf(group.aliases.map((alias) => pickRegionGrade(pm10GradeText, alias)).filter((x): x is DustLevel => Boolean(x))),
-    pm25: worstOf(group.aliases.map((alias) => pickRegionGrade(pm25GradeText, alias)).filter((x): x is DustLevel => Boolean(x))),
+    pm10: worstOf(
+      group.aliases
+        .map((alias) => pickRegionGrade(pm10GradeText, alias))
+        .filter((x): x is DustLevel => Boolean(x))
+    ),
+    pm25: worstOf(
+      group.aliases
+        .map((alias) => pickRegionGrade(pm25GradeText, alias))
+        .filter((x): x is DustLevel => Boolean(x))
+    ),
   }));
 
   return {

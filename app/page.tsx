@@ -311,14 +311,40 @@ export default async function Page() {
                 <span className="dust-time">{dust.dataTime ?? "-"}</span>
               </div>
 
-              <div className="dust-grid">
-                {dust.regions.map((item) => (
-                  <div key={item.region} className="dust-item">
-                    <span className={dustClassName(item.grade)} />
-                    <span className="dust-region">{item.region}</span>
-                    <span className="dust-grade">{item.grade}</span>
-                  </div>
-                ))}
+              <div className="dust-table">
+                <div className="dust-table-head">
+                  <div className="dust-left-spacer" />
+                  {dust.regions.map((item) => (
+                    <div key={`head-${item.region}`} className="dust-col-head">
+                      {item.displayLabel}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="dust-table-row">
+                  <div className="dust-row-label">미세먼지</div>
+                  {dust.regions.map((item) => (
+                    <div key={`pm10-${item.region}`} className="dust-cell">
+                      <span className={dustClassName(item.pm10)} />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="dust-table-row">
+                  <div className="dust-row-label">초미세먼지</div>
+                  {dust.regions.map((item) => (
+                    <div key={`pm25-${item.region}`} className="dust-cell">
+                      <span className={dustClassName(item.pm25)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dust-legend">
+                <span><span className="dust-circle dust-good" />좋음</span>
+                <span><span className="dust-circle dust-normal" />보통</span>
+                <span><span className="dust-circle dust-bad" />나쁨</span>
+                <span><span className="dust-circle dust-very-bad" />매우 나쁨</span>
               </div>
             </section>
           </div>

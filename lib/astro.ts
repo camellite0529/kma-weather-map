@@ -43,9 +43,7 @@ export async function getAstroTimes(): Promise<AstroTimes> {
   const url =
     `https://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo?serviceKey=${encodedServiceKey}&${params.toString()}`;
 
-  const res = await fetch(url, {
-    cache: "no-store",
-  });
+  const res = await fetch(url, { cache: "no-store" });
 
   if (!res.ok) {
     throw new Error(`출몰시각 API 호출 실패: ${res.status}`);
