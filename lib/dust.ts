@@ -9,6 +9,12 @@ export type DustRegionItem = {
   pm25: DustLevel;
 };
 
+export type DustData = {
+  dataTime: string | null;
+  announcedAt: string | null;
+  regions: DustRegionItem[];
+};
+
 type DustForecastItem = {
   dataTime?: string;
   informData?: string;
@@ -140,7 +146,7 @@ async function fetchForecast(
   return matched;
 }
 
-export async function getDustData() {
+export async function getDustData(): Promise<DustData> {
   const targetDate = formatDashedDate(getTargetDate(1));
 
   const [pm10Data, pm25Data] = await Promise.all([
@@ -167,8 +173,9 @@ export async function getDustData() {
   }));
 
   return {
-    dataTime: targetDate,
-    regions,
-  };
+  dataTime: targetDate,
+  announcedAt: pm10Data.dataTime ?? pm25Data.dataTime ?? null,
+  regions,
+};
 }
 
