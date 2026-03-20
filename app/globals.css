@@ -251,7 +251,8 @@ body {
   white-space: nowrap;
 }
 
-.astro-card {
+.top-layout > .astro-card {
+  margin-top: 10.2mm;
   padding: 1.6mm 2.2mm;
   background: #eef1f6;
   border-radius: 2mm;
@@ -619,6 +620,7 @@ body {
   .top-layout {
     margin-bottom: 2mm;
   }
+  
 
   .today-note-section {
     margin-bottom: 0;
@@ -674,13 +676,18 @@ body {
   .right-column {
     gap: 20px;
   }
+  .top-layout > .astro-card {
+    margin-top: 9.6mm;
+  }
 
   .dust-table-head,
   .dust-table-row {
     grid-template-columns: 56px repeat(12, minmax(44px, 1fr));
     min-width: 760px;
   }
-
+  .top-layout > .astro-card {
+  margin-top: 0;
+  }
   .dust-table {
     overflow-x: auto;
   }
