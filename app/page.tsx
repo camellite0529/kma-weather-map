@@ -48,16 +48,20 @@ function displayPercent(value: number | null) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function barWidthPercent(value: number | null) {
-  const actual = displayPercent(value);
-  return actual === 0 ? 0 : actual;
-}
+const amWidth = displayPercent(row.tomorrow.amPop);
+const pmWidth = displayPercent(row.tomorrow.pmPop);
 
 function dustClassName(grade: DustLevel) {
   if (grade === "좋음") return "dust-circle dust-good";
   if (grade === "보통") return "dust-circle dust-normal";
   if (grade === "나쁨") return "dust-circle dust-bad";
   return "dust-circle dust-very-bad";
+}
+
+function formatSeoulDateTime(value: string | number | Date) {
+  return new Date(value).toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+  });
 }
 
 function AstroCard({
@@ -188,11 +192,11 @@ export default async function Page() {
       getDustData(),
     ]);
 
-    const tomorrowMap = weather.data;
     const tableRows = weather.data.filter((item) => TABLE_CITIES.includes(item.city));
-    const precipRows = PRECIP_CITIES.map((city) =>
-      weather.data.find((item) => item.city === city),
-    ).filter((item): item is CityWeather => Boolean(item));
+    const precipCitySet = new Set(PRECIP_CITIES);
+    const precipRows = weather.data.filter((item) =>
+      precipCitySet.has(item.city as (typeof PRECIP_CITIES)[number]),
+    );
 
     return (
       <main className="page">
@@ -204,9 +208,7 @@ export default async function Page() {
                 발표기준: {weather.base.baseDate} {weather.base.baseTime}
               </div>
               <div>
-                업데이트: {new Date(weather.updatedAt).toLocaleString("ko-KR", {
-                timeZone: "Asia/Seoul",
-                })}
+                업데이트: {formatSeoulDateTime(weather.updatedAt)}
               </div>
             </div>
           </header>
@@ -246,7 +248,7 @@ export default async function Page() {
               <div className="map-shell">
                 <div className="map-stage">
                   <img src="/map-bg.png" alt="대한민국 지도" className="map-image" />
-                  {tomorrowMap.map((item) => {
+                  {weather.data.map((item) => {
                     const pos = getMarkerPosition(item.city);
                     return (
                       <div
@@ -270,14 +272,16 @@ export default async function Page() {
               </div>
             </section>
 
-            <div className="right-column">
+                        <div className="right-column">
               <AstroCard
                 sunrise={astro.sunrise}
                 sunset={astro.sunset}
                 moonrise={astro.moonrise}
                 moonset={astro.moonset}
               />
+
               <PrecipChart rows={precipRows} />
+
               <section className="card forecast-card">
                 <div className="section-header section-header-tight">
                   <h2>예상날씨(℃)</h2>
@@ -287,72 +291,66 @@ export default async function Page() {
                   <CompactDayTable title="모레" rows={tableRows} kind="threeDaysLater" />
                 </div>
               </section>
-            </div>
 
-         <div className="section-header section-header-tight dust-header">
-  <h2>오늘의 미세먼지</h2>
-  <div className="dust-meta">
-    <span className="dust-time">{dust.dataTime ?? "-"}</span>
-    <span className="dust-announced">
-      발표:{" "}
-      {dust.announcedAt
-        ? new Date(dust.announcedAt).toLocaleString("ko-KR", {
-            timeZone: "Asia/Seoul",
-          })
-        : "-"}
-    </span>
-  </div>
-</div> 
-
-              <div className="dust-table">
-                <div className="dust-table-head">
-                  <div className="dust-left-spacer" />
-                  {dust.regions.map((item) => (
-                    <div key={`head-${item.region}`} className="dust-col-head">
-                      {item.displayLabel}
-                    </div>
-                  ))}
+              <section className="card dust-card">
+                <div className="section-header section-header-tight dust-header">
+                  <h2>오늘의 미세먼지</h2>
+                  <div className="dust-meta">
+                    <span className="dust-time">{dust.dataTime ?? "-"}</span>
+                    <span className="dust-announced">
+                      발표:{" "}
+                      {dust.announcedAt ? formatSeoulDateTime(dust.announcedAt) : "-"}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="dust-table-row">
-                  <div className="dust-row-label">미세먼지</div>
-                  {dust.regions.map((item) => (
-                    <div key={`pm10-${item.region}`} className="dust-cell">
-                      <span className={dustClassName(item.pm10)} />
-                    </div>
-                  ))}
+                <div className="dust-table">
+                  <div className="dust-table-head">
+                    <div className="dust-left-spacer" />
+                    {dust.regions.map((item) => (
+                      <div key={`head-${item.region}`} className="dust-col-head">
+                        {item.displayLabel}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="dust-table-row">
+                    <div className="dust-row-label">미세먼지</div>
+                    {dust.regions.map((item) => (
+                      <div key={`pm10-${item.region}`} className="dust-cell">
+                        <span className={dustClassName(item.pm10)} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="dust-table-row">
+                    <div className="dust-row-label">초미세먼지</div>
+                    {dust.regions.map((item) => (
+                      <div key={`pm25-${item.region}`} className="dust-cell">
+                        <span className={dustClassName(item.pm25)} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="dust-table-row">
-                  <div className="dust-row-label">초미세먼지</div>
-                  {dust.regions.map((item) => (
-                    <div key={`pm25-${item.region}`} className="dust-cell">
-                      <span className={dustClassName(item.pm25)} />
-                    </div>
-                  ))}
+                <div className="dust-legend">
+                  <span>
+                    <span className="dust-circle dust-good" />좋음
+                  </span>
+                  <span>
+                    <span className="dust-circle dust-normal" />보통
+                  </span>
+                  <span>
+                    <span className="dust-circle dust-bad" />나쁨
+                  </span>
+                  <span>
+                    <span className="dust-circle dust-very-bad" />매우 나쁨
+                  </span>
                 </div>
-              </div>
 
-              <div className="dust-legend">
-                <span>
-                  <span className="dust-circle dust-good" />좋음
-                </span>
-                <span>
-                  <span className="dust-circle dust-normal" />보통
-                </span>
-                <span>
-                  <span className="dust-circle dust-bad" />나쁨
-                </span>
-                <span>
-                  <span className="dust-circle dust-very-bad" />매우 나쁨
-                </span>
-              </div>
-            </section>
-          </div>
-        </div>
-      </main>
-    );
-  } catch (error) {
+                /*이 부분 뭔가 확신이 없다*/
+                
+  catch (error) {
     const message =
       error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
 
