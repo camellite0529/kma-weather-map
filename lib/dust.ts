@@ -90,17 +90,38 @@ function worstOf(levels: DustLevel[]) {
 function pickRegionGrade(informGrade: string, alias: string): DustLevel | null {
   const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(
-    `${escaped}\\s*[:：]\\s*(좋음|보통|나쁨|매우나쁨|매우 나쁨)`
+    `${escaped}\\s*[:：]\\s*(좋음|보통|나쁨|매우나쁨|매우 나쁨)`,
   );
   const match = informGrade.match(regex);
   if (!match?.[1]) return null;
   return normalizeDustLevel(match[1]);
 }
 
-async function fetchForecast(
-  informCode: "PM10" | "PM25",
-  targetDate: string
-) {
+function normalizeAnnouncedAt(value?: string) {
+  if (!value) return null;
+
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  const match = trimmed.match(
+    /(\d{4})[년\-./]\s*(\d{1,2})[월\-./]\s*(\d{1,2})(?:일)?(?:\s+(\d{1,2})(?::|시)\s*(\d{1,2})?)?/,
+  );
+
+  if (!match) return trimmed;
+
+  const [, year, month, day, hour, minute] = match;
+  const yyyy = year;
+  const mm = month.padStart(2, "0");
+  const dd = day.padStart(2, "0");
+
+  if (!hour) {
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const hh = hour.padStart(2, "0");
+  const min = (minute ?? "00").padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+async function fetchForecast(informCode: "PM10" | "PM25", targetDate: string) {
   const rawKey = process.env.AIRKOREA_SERVICE_KEY;
 
   if (!rawKey) {
@@ -123,7 +144,7 @@ async function fetchForecast(
 
   const res = await fetch(
     `${BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`,
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 
   if (!res.ok) {
@@ -156,6 +177,7 @@ export async function getDustData(): Promise<DustData> {
 
   const pm10GradeText = pm10Data.informGrade ?? "";
   const pm25GradeText = pm25Data.informGrade ?? "";
+  const announcedAtRaw = pm10Data.dataTime ?? pm25Data.dataTime ?? null;
 
   const regions: DustRegionItem[] = REGION_GROUPS.map((group) => ({
     region: group.region,
@@ -163,19 +185,18 @@ export async function getDustData(): Promise<DustData> {
     pm10: worstOf(
       group.aliases
         .map((alias) => pickRegionGrade(pm10GradeText, alias))
-        .filter((x): x is DustLevel => Boolean(x))
+        .filter((x): x is DustLevel => Boolean(x)),
     ),
     pm25: worstOf(
       group.aliases
         .map((alias) => pickRegionGrade(pm25GradeText, alias))
-        .filter((x): x is DustLevel => Boolean(x))
+        .filter((x): x is DustLevel => Boolean(x)),
     ),
   }));
 
   return {
-  dataTime: targetDate,
-  announcedAt: pm10Data.dataTime ?? pm25Data.dataTime ?? null,
-  regions,
-};
+    dataTime: targetDate,
+    announcedAt: normalizeAnnouncedAt(announcedAtRaw ?? undefined),
+    regions,
+  };
 }
-
