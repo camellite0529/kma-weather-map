@@ -289,11 +289,20 @@ export default async function Page() {
               </section>
             </div>
 
-            <section className="card dust-card">
-              <div className="section-header section-header-tight dust-header">
-                <h2>오늘의 미세먼지</h2>
-                <span className="dust-time">{dust.dataTime ?? "-"}</span>
-              </div>
+         <div className="section-header section-header-tight dust-header">
+  <h2>오늘의 미세먼지</h2>
+  <div className="dust-meta">
+    <span className="dust-time">{dust.dataTime ?? "-"}</span>
+    <span className="dust-announced">
+      발표:{" "}
+      {dust.announcedAt
+        ? new Date(dust.announcedAt).toLocaleString("ko-KR", {
+            timeZone: "Asia/Seoul",
+          })
+        : "-"}
+    </span>
+  </div>
+</div> 
 
               <div className="dust-table">
                 <div className="dust-table-head">
