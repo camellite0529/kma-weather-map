@@ -48,9 +48,6 @@ function displayPercent(value: number | null) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-const amWidth = displayPercent(row.tomorrow.amPop);
-const pmWidth = displayPercent(row.tomorrow.pmPop);
-
 function dustClassName(grade: DustLevel) {
   if (grade === "좋음") return "dust-circle dust-good";
   if (grade === "보통") return "dust-circle dust-normal";
@@ -122,25 +119,23 @@ function PrecipChart({ rows }: { rows: CityWeather[] }) {
 
       <div className="precip-chart">
         {rows.map((row) => {
-          const amDisplay = displayPercent(row.tomorrow.amPop);
-          const pmDisplay = displayPercent(row.tomorrow.pmPop);
-          const amWidth = barWidthPercent(row.tomorrow.amPop);
-          const pmWidth = barWidthPercent(row.tomorrow.pmPop);
+          const amPercent = displayPercent(row.tomorrow.amPop);
+          const pmPercent = displayPercent(row.tomorrow.pmPop);
 
           return (
             <div key={row.city} className="precip-row-item">
               <div className="precip-label">{row.city}</div>
               <div className="precip-track">
-                {amWidth > 0 ? (
+                {amPercent > 0 ? (
                   <span
                     className="precip-bar precip-bar-am"
-                    style={{ width: `${amWidth}%` }}
+                    style={{ width: `${amPercent}%` }}
                   />
                 ) : null}
-                {pmWidth > 0 ? (
+                {pmPercent > 0 ? (
                   <span
                     className="precip-bar precip-bar-pm"
-                    style={{ width: `${pmWidth}%` }}
+                    style={{ width: `${pmPercent}%` }}
                   />
                 ) : null}
               </div>
