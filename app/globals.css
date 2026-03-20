@@ -543,23 +543,30 @@ body {
   width: 3.2mm;
   height: 3.2mm;
   border-radius: 50%;
+  border: 0.35mm solid currentColor;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .dust-good {
   background: #3182ce;
+  color: #3182ce;
 }
 
 .dust-normal {
   background: #38a169;
+  color: #38a169;
 }
 
 .dust-bad {
   background: #d69e2e;
+  color: #d69e2e;
 }
 
 .dust-very-bad {
   background: #e53e3e;
-}
+  color: #e53e3e;
+} 
 
 .dust-legend {
   display: flex;
@@ -602,7 +609,7 @@ body {
     box-shadow: none;
   }
 
-    .top-layout,
+  .top-layout,
   .layout-map,
   .right-column {
     break-inside: avoid;
@@ -642,6 +649,12 @@ body {
     margin-top: 1.1mm;
     gap: 3mm;
     font-size: 2.8mm;
+  }
+
+  .dust-circle {
+    border: 0.35mm solid #000;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }
 
