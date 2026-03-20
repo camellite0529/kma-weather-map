@@ -292,6 +292,7 @@ export default async function Page() {
                 </div>
               </section>
 
+              /*여기서부터 미세먼지*/
               <section className="card dust-card">
                 <div className="section-header section-header-tight dust-header">
                   <h2>오늘의 미세먼지</h2>
@@ -347,10 +348,13 @@ export default async function Page() {
                     <span className="dust-circle dust-very-bad" />매우 나쁨
                   </span>
                 </div>
-
-                /*이 부분 뭔가 확신이 없다*/
-                
-  catch (error) {
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  } catch (error) {                
     const message =
       error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
 
