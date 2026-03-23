@@ -19,7 +19,7 @@
   morning 비 or 비/눈 or 눈/비 → afternoon 맑음 or 구름조금 or 구름많음 or 흐림 = "비후갬"
   morning 맑음 or 구름조금 or 구름많음 or 흐림 → afternoon 눈= "눈"
   morning 눈 → afternoon 맑음 or 구름조금 or 구름많음 or 흐림 or 비/눈 or 눈/비 = "눈"
-  -   
+  
 - 표 형태의 **예상날씨(실제로는 모레 / 글피 기온)**
   - 지역: 서울, 인천, 춘천, 강릉, 대전, 세종, 청주, 광주, 전주, 부산, 울산, 대구, 제주
   - 항목: 최저기온 / 최고기온
