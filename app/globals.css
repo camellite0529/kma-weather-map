@@ -18,6 +18,7 @@ html,
 body {
   margin: 0;
   padding: 0;
+  min-width: 0;
   background: var(--bg);
   color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
@@ -25,15 +26,23 @@ body {
 
 body {
   min-height: 100vh;
+  overflow-x: auto;
 }
 
 .page {
-  padding: 12px 0;
+  min-height: 100vh;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: auto;
 }
 
 .a4-sheet {
   width: 210mm;
+  min-width: 210mm;
   min-height: 297mm;
+  flex: 0 0 auto;
   margin: 0 auto;
   background: var(--paper);
   padding: 6mm 6mm 7mm;
@@ -177,7 +186,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2.2mm;
-} 
+}
 
 .layout-map {
   min-height: 0;
@@ -478,7 +487,7 @@ body {
   grid-column: 1 / -1;
   padding-top: 0.4mm;
   margin-top: -0.8mm;
-} 
+}
 
 .dust-header {
   align-items: center;
@@ -498,7 +507,7 @@ body {
   font-size: 2.3mm;
   color: var(--muted);
   white-space: nowrap;
-} 
+}
 
 .dust-table {
   display: flex;
@@ -567,7 +576,7 @@ body {
 .dust-very-bad {
   background: #e53e3e;
   color: #e53e3e;
-} 
+}
 
 .dust-legend {
   display: flex;
@@ -596,14 +605,19 @@ body {
   html,
   body {
     background: #fff;
+    overflow: visible;
   }
 
   .page {
+    min-height: auto;
     padding: 0;
+    display: block;
+    overflow: visible;
   }
 
   .a4-sheet {
     width: auto;
+    min-width: 0;
     min-height: auto;
     margin: 0;
     padding: 0;
@@ -620,7 +634,6 @@ body {
   .top-layout {
     margin-bottom: 2mm;
   }
-  
 
   .today-note-section {
     margin-bottom: 0;
@@ -657,114 +670,5 @@ body {
     border: 0.35mm solid #000;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-  }
-}
-
-@media screen and (max-width: 1100px) {
-  .a4-sheet {
-    width: 100%;
-    min-height: auto;
-    padding: 20px;
-  }
-  .top-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .news-layout {
-    grid-template-columns: 1fr;
-  }
-  .right-column {
-    gap: 20px;
-  }
-  .top-layout > .astro-card {
-    margin-top: 9.6mm;
-  }
-
-  .dust-table-head,
-  .dust-table-row {
-    grid-template-columns: 56px repeat(12, minmax(44px, 1fr));
-    min-width: 760px;
-  }
-  .top-layout > .astro-card {
-  margin-top: 0;
-  }
-  .dust-table {
-    overflow-x: auto;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .today-note-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .today-note-title {
-    font-size: 18px;
-  }
-
-  .today-note-short {
-    height: 38px;
-    font-size: 18px;
-  }
-
-  .today-note-long {
-  min-height: 72px;
-  font-size: 13px;
-  padding: 10px 12px;
-}
-  .dust-meta {
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-  .forecast-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .map-marker {
-    min-width: 82px;
-    max-width: 112px;
-  }
-
-  .marker-weather {
-    font-size: 14px;
-  }
-
-  .marker-line {
-    font-size: 10px;
-  }
-
-  .astro-row {
-    font-size: 11px;
-    grid-template-columns: 16px 34px 1fr 34px 1fr;
-  }
-
-  .precip-card .section-header h2 {
-    font-size: 14px;
-  }
-
-  .precip-legend {
-    font-size: 10px;
-  }
-
-  .precip-row-item {
-    grid-template-columns: 44px 1fr 40px;
-  }
-
-  .precip-label {
-    font-size: 10px;
-  }
-
-  .precip-values {
-    gap: 2px;
-    font-size: 10px;
-  }
-
-  .forecast-table-grid th,
-  .forecast-table-grid td {
-    font-size: 11px;
-    padding: 4px 6px;
   }
 }
