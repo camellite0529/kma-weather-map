@@ -371,13 +371,13 @@ export function summarizeDailyWeather(
     }))
     .filter((item) => Number.isFinite(item.time) && Number.isFinite(item.value));
 
-  const amItems = precipItems.filter((item) => item.time >= 600 && item.time < 1200);
-  const pmItems = precipItems.filter((item) => item.time >= 1200 && item.time <= 2100);
+  const amItems = precipItems.filter((item) => item.time >= 0 && item.time < 1200);
+  const pmItems = precipItems.filter((item) => item.time >= 1200 && item.time <= 2400);
 
   const amPop = amItems.length ? Math.max(...amItems.map((item) => item.value)) : null;
   const pmPop = pmItems.length ? Math.max(...pmItems.map((item) => item.value)) : null;
 
-  const amSky = pickHalfDayWeather(dayItems, 600, 1200, 900);
+  const amSky = pickHalfDayWeather(dayItems, 0, 1200, 900);
   const pmSky = pickHalfDayWeather(dayItems, 1200, 2400, 1500);
 
   return {
