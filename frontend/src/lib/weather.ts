@@ -15,7 +15,6 @@ function kmaApiOrigin(): string {
 
 const BASE_URL = `${kmaApiOrigin()}/1360000/VilageFcstInfoService_2.0/getVilageFcst`;
 const REQUEST_TIMEOUT_MS = 12000;
-const MAX_RETRIES = 2;
 const CONCURRENCY = 5;
 
 type WeatherWarning = {
@@ -38,10 +37,6 @@ export type WeatherResult = {
   }>;
   warnings: WeatherWarning[];
 };
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function isLikelyEncodedKey(value: string) {
   return /%[0-9A-Fa-f]{2}/.test(value);
@@ -112,65 +107,43 @@ async function fetchCityForecast(
     ny,
   });
 
-  let lastError: Error | null = null;
+  const res = await fetchWithTimeout(url);
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-    try {
-      const res = await fetchWithTimeout(url);
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(
-          `${cityName} API 호출 실패: ${res.status}${body ? ` ${body.slice(0, 120)}` : ""}`,
-        );
-      }
-
-      const json = await res.json();
-      const resultCode = json?.response?.header?.resultCode;
-      const resultMsg = json?.response?.header?.resultMsg;
-
-      if (resultCode && resultCode !== "00") {
-        throw new Error(
-          `${cityName} API 응답 오류: ${resultCode} ${resultMsg ?? ""}`.trim(),
-        );
-      }
-
-      const items = json?.response?.body?.items?.item ?? [];
-
-      if (!Array.isArray(items) || items.length === 0) {
-        throw new Error(`${cityName} 예보 데이터가 비어 있습니다.`);
-      }
-
-      const tomorrowDate = getTargetDate(1);
-      const dayAfterTomorrowDate = getTargetDate(2);
-      const threeDaysLaterDate = getTargetDate(3);
-
-      return {
-        city: cityName,
-        lat,
-        lon,
-        tomorrow: summarizeDailyWeather(items, tomorrowDate),
-        dayAfterTomorrow: summarizeDailyWeather(items, dayAfterTomorrowDate),
-        threeDaysLater: summarizeDailyWeather(items, threeDaysLaterDate),
-      };
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("알 수 없는 오류");
-
-      const isAbort = lastError.name === "AbortError";
-      const isRetryable =
-        isAbort ||
-        /\b(401|403|408|429|500|502|503|504)\b/.test(lastError.message) ||
-        /fetch failed/i.test(lastError.message);
-
-      if (!isRetryable || attempt === MAX_RETRIES) {
-        break;
-      }
-
-      await sleep(400 * (attempt + 1));
-    }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `${cityName} API 호출 실패: ${res.status}${body ? ` ${body.slice(0, 120)}` : ""}`,
+    );
   }
 
-  throw lastError ?? new Error(`${cityName} API 호출 실패`);
+  const json = await res.json();
+  const resultCode = json?.response?.header?.resultCode;
+  const resultMsg = json?.response?.header?.resultMsg;
+
+  if (resultCode && resultCode !== "00") {
+    throw new Error(
+      `${cityName} API 응답 오류: ${resultCode} ${resultMsg ?? ""}`.trim(),
+    );
+  }
+
+  const items = json?.response?.body?.items?.item ?? [];
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error(`${cityName} 예보 데이터가 비어 있습니다.`);
+  }
+
+  const tomorrowDate = getTargetDate(1);
+  const dayAfterTomorrowDate = getTargetDate(2);
+  const threeDaysLaterDate = getTargetDate(3);
+
+  return {
+    city: cityName,
+    lat,
+    lon,
+    tomorrow: summarizeDailyWeather(items, tomorrowDate),
+    dayAfterTomorrow: summarizeDailyWeather(items, dayAfterTomorrowDate),
+    threeDaysLater: summarizeDailyWeather(items, threeDaysLaterDate),
+  };
 }
 
 async function runInBatches<T, R>(

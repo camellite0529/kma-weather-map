@@ -1,3 +1,5 @@
+import astroQueryJson from "../../data/astro-query.json";
+
 export type AstroTimes = {
   sunrise: string | null;
   sunset: string | null;
@@ -40,7 +42,7 @@ export async function getAstroTimes(kasiServiceKey: string): Promise<AstroTimes>
 
   const params = new URLSearchParams({
     locdate: getTomorrowDateKST(),
-    location: "서울",
+    location: astroQueryJson.location,
   });
 
   const url = `${kasiApiOrigin()}/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo?serviceKey=${encodedServiceKey}&${params.toString()}`;

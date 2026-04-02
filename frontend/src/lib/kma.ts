@@ -1,3 +1,8 @@
+import mapCitiesJson from "../../data/map-cities.json";
+import tableCitiesJson from "../../data/table-cities.json";
+import mapMarkerPositionsJson from "../../data/map-marker-positions.json";
+import precipCitiesJson from "../../data/precip-cities.json";
+
 export type City = {
   name: string;
   lat: number;
@@ -36,73 +41,11 @@ export type MarkerPosition = {
   y: number;
 };
 
-export const MAP_CITIES: City[] = [
-  { name: "서울", lat: 37.5665, lon: 126.978 },
-  { name: "인천", lat: 37.4563, lon: 126.7052 },
-  { name: "수원", lat: 37.2636, lon: 127.0286 },
-  { name: "춘천", lat: 37.8813, lon: 127.7298 },
-  { name: "속초", lat: 38.207, lon: 128.5918 },
-  { name: "강릉", lat: 37.7519, lon: 128.8761 },
-  { name: "홍성", lat: 36.6012, lon: 126.6608 },
-  { name: "세종", lat: 36.48, lon: 127.289 },
-  { name: "청주", lat: 36.6424, lon: 127.489 },
-  { name: "안동", lat: 36.5684, lon: 128.7294 },
-  { name: "대전", lat: 36.3504, lon: 127.3845 },
-  { name: "전주", lat: 35.8242, lon: 127.148 },
-  { name: "대구", lat: 35.8722, lon: 128.6025 },
-  { name: "포항", lat: 36.019, lon: 129.3435 },
-  { name: "울산", lat: 35.5384, lon: 129.3114 },
-  { name: "창원", lat: 35.2285, lon: 128.6811 },
-  { name: "부산", lat: 35.1796, lon: 129.0756 },
-  { name: "광주", lat: 35.1595, lon: 126.8526 },
-  { name: "목포", lat: 34.8118, lon: 126.3922 },
-  { name: "여수", lat: 34.7604, lon: 127.6622 },
-  { name: "제주", lat: 33.4996, lon: 126.5312 },
-  { name: "울릉도", lat: 37.484, lon: 130.9057 },
-  { name: "독도", lat: 37.2411, lon: 131.8644 },
-];
-
-export const TABLE_CITIES = [
-  "서울",
-  "인천",
-  "춘천",
-  "강릉",
-  "대전",
-  "세종",
-  "청주",
-  "광주",
-  "전주",
-  "부산",
-  "울산",
-  "대구",
-  "제주",
-];
-
-export const MAP_MARKER_POSITIONS: Record<string, MarkerPosition> = {
-  서울: { x: 31.5, y: 21.5 },
-  인천: { x: 14.0, y: 23.2 },
-  수원: { x: 30.8, y: 28.5 },
-  춘천: { x: 50.0, y: 15.0 },
-  속초: { x: 65.0, y: 8.4 },
-  강릉: { x: 74.0, y: 19.0 },
-  홍성: { x: 16.5, y: 41.0 },
-  세종: { x: 33.5, y: 41.6 },
-  청주: { x: 49.0, y: 38.5 },
-  안동: { x: 69.0, y: 42.0 },
-  대전: { x: 35.0, y: 48.0 },
-  전주: { x: 32.0, y: 56.0 },
-  대구: { x: 71.0, y: 55.3 },
-  포항: { x: 87.0, y: 54.0 },
-  울산: { x: 86.0, y: 63.0 },
-  창원: { x: 67.0, y: 68.5 },
-  부산: { x: 84.0, y: 70.0 },
-  광주: { x: 23.0, y: 69.5 },
-  목포: { x: 14.0, y: 78.0 },
-  여수: { x: 47.0, y: 79.0 },
-  제주: { x: 42.4, y: 92.2 },
-  울릉도: { x: 68.0, y: 92.2 },
-  독도: { x: 87.5, y: 92.2 },
-};
+export const MAP_CITIES: City[] = mapCitiesJson;
+export const TABLE_CITIES: string[] = tableCitiesJson;
+export const PRECIP_CITIES: readonly string[] = precipCitiesJson;
+export const MAP_MARKER_POSITIONS: Record<string, MarkerPosition> =
+  mapMarkerPositionsJson;
 
 function getKstParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {

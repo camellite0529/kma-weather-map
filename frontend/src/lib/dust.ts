@@ -1,4 +1,5 @@
 import { getTargetDate } from "./kma";
+import dustRegionGroupsJson from "../../data/dust-region-groups.json";
 
 export type DustLevel = "좋음" | "보통" | "나쁨" | "매우 나쁨";
 
@@ -31,20 +32,11 @@ function dustApiOrigin(): string {
 
 const BASE_URL = `${dustApiOrigin()}/api/MinuDustFrcstDspthSvrc/v1/getMinuDustFrcstDspth`;
 
-const REGION_GROUPS = [
-  { region: "서울", displayLabel: "서울", aliases: ["서울"] },
-  { region: "인천", displayLabel: "인천", aliases: ["인천"] },
-  { region: "경기북부", displayLabel: "경기\n북부", aliases: ["경기북부"] },
-  { region: "경기남부", displayLabel: "경기\n남부", aliases: ["경기남부"] },
-  { region: "강원", displayLabel: "강원", aliases: ["강원영서", "강원영동"] },
-  { region: "대전충남", displayLabel: "대전\n충남", aliases: ["대전", "충남"] },
-  { region: "세종충북", displayLabel: "세종\n충북", aliases: ["세종", "충북"] },
-  { region: "전북", displayLabel: "전북", aliases: ["전북"] },
-  { region: "광주전남", displayLabel: "광주\n전남", aliases: ["광주", "전남"] },
-  { region: "대구경북", displayLabel: "대구\n경북", aliases: ["대구", "경북"] },
-  { region: "부산경남", displayLabel: "부산\n경남", aliases: ["부산", "경남"] },
-  { region: "제주", displayLabel: "제주", aliases: ["제주"] },
-] as const;
+const REGION_GROUPS = dustRegionGroupsJson as readonly {
+  region: string;
+  displayLabel: string;
+  aliases: readonly string[];
+}[];
 
 function getTodayKST() {
   const now = new Date();
@@ -202,5 +194,19 @@ export async function getDustData(airkoreaServiceKey: string): Promise<DustData>
     dataTime: targetDate,
     announcedAt: normalizeAnnouncedAt(announcedAtRaw ?? undefined),
     regions,
+  };
+}
+
+/** API 호출 전 자리 표시용(시간·등급은 아직 없음) */
+export function createEmptyDustData(): DustData {
+  return {
+    dataTime: null,
+    announcedAt: null,
+    regions: REGION_GROUPS.map((group) => ({
+      region: group.region,
+      displayLabel: group.displayLabel,
+      pm10: "보통",
+      pm25: "보통",
+    })),
   };
 }

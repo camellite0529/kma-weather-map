@@ -68,6 +68,29 @@
   outline-offset: 0;
 }
 
+.api-key-show-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+  user-select: none;
+}
+
+.api-key-show-row input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.api-key-show-row label {
+  display: inline;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
 .api-key-actions {
   display: flex;
   gap: 10px;
@@ -119,14 +142,51 @@
 
 .sheet-toolbar {
   width: 210mm;
-  max-width: 100%;
   margin: 0 auto 10px;
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   padding: 0 6mm;
   box-sizing: border-box;
 }
 
+.sheet-toolbar-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.data-load-status-label {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+#data-load-status[data-state="loading"] .data-load-status-label {
+  color: #7f1d1d;
+}
+
+#data-load-status[data-state="complete"] .data-load-status-label {
+  color: #15803d;
+}
+
+#data-load-status[data-state="error"] .data-load-status-label {
+  color: #b91c1c;
+}
+
+.sheet-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: end;
+}
+
+.settings-btn,
+.weather-refresh-btn,
 .png-download-btn {
   padding: 8px 14px;
   font-size: 14px;
@@ -138,10 +198,14 @@
   font-family: inherit;
 }
 
+.settings-btn:hover,
+.weather-refresh-btn:hover,
 .png-download-btn:hover {
   background: #f5f5f5;
 }
 
+.settings-btn:disabled,
+.weather-refresh-btn:disabled,
 .png-download-btn:disabled {
   opacity: 0.6;
   cursor: wait;
@@ -166,6 +230,8 @@ body {
 
 .page {
   padding: 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .a4-sheet {
@@ -234,28 +300,38 @@ body {
 
 .today-note-top {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 3mm;
   margin-bottom: 1.2mm;
 }
 
 .today-note-title {
+  flex: 0 0 auto;
+  margin: 0;
   font-size: 4.8mm;
   font-weight: 700;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
 .today-note-short {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
   height: 9mm;
   border: none;
   background: transparent;
   font-family: inherit;
   font-size: 4.8mm;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 9mm;
   outline: none;
   padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .today-note-long {
@@ -725,105 +801,5 @@ body {
     border: 0.35mm solid #000;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-  }
-}
-
-@media screen and (max-width: 1100px) {
-  .a4-sheet {
-    width: 100%;
-    min-height: auto;
-    padding: 20px;
-  }
-  .sheet-toolbar {
-    width: 100%;
-    padding: 0 20px;
-  }
-  .top-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .news-layout {
-    grid-template-columns: 1fr;
-  }
-  .right-column {
-    gap: 20px;
-  }
-  .top-layout > .astro-card {
-    margin-top: 9.6mm;
-  }
-
-  .dust-table-head,
-  .dust-table-row {
-    grid-template-columns: 56px repeat(12, minmax(44px, 1fr));
-    min-width: 760px;
-  }
-  .top-layout > .astro-card {
-    margin-top: 0;
-  }
-  .dust-table {
-    overflow-x: auto;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .today-note-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .today-note-title {
-    font-size: 18px;
-  }
-
-  .today-note-short {
-    height: 38px;
-    font-size: 18px;
-  }
-
-  .today-note-long {
-    min-height: 72px;
-    font-size: 13px;
-    padding: 10px 12px;
-  }
-  .dust-meta {
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .forecast-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .astro-row {
-    font-size: 12px;
-    grid-template-columns: 16px 34px 1fr 34px 1fr;
-  }
-
-  .precip-card .section-header h2 {
-    font-size: 14px;
-  }
-
-  .precip-legend {
-    font-size: 10px;
-  }
-
-  .precip-row-item {
-    grid-template-columns: 44px 1fr 40px;
-  }
-
-  .precip-label {
-    font-size: 10px;
-  }
-
-  .precip-values {
-    gap: 2px;
-    font-size: 10px;
-  }
-
-  .forecast-table-grid th,
-  .forecast-table-grid td {
-    font-size: 11px;
-    padding: 4px 6px;
   }
 }

@@ -1,30 +1,104 @@
 import "./styles/page.css";
 import "./styles/map.css";
 import html2canvas from "html2canvas";
-import { TABLE_CITIES, getMarkerPosition, type CityWeather } from "./lib/kma";
+import {
+  MAP_CITIES,
+  TABLE_CITIES,
+  PRECIP_CITIES,
+  getMarkerPosition,
+  type CityWeather,
+  type DailyWeather,
+} from "./lib/kma";
 import { getWeatherData, type WeatherResult } from "./lib/weather";
 import { getAstroTimes, type AstroTimes } from "./lib/astro";
-import { getDustData, type DustData, type DustLevel } from "./lib/dust";
+import {
+  createEmptyDustData,
+  getDustData,
+  type DustData,
+  type DustLevel,
+} from "./lib/dust";
 
-const STORAGE_KMA = "kma_weather_kma_key";
-const STORAGE_AIR = "kma_weather_air_key";
-const STORAGE_KASI = "kma_weather_kasi_key";
-
-const PRECIP_CITIES = [
-  "서울",
-  "인천",
-  "춘천",
-  "강릉",
-  "대전",
-  "세종",
-  "청주",
-  "광주",
-  "전주",
-  "부산",
-  "울산",
-  "대구",
-  "제주",
+const STORAGE_API_KEY = "kma_weather_api_key";
+const LEGACY_KEYS = [
+  "kma_weather_kma_key",
+  "kma_weather_air_key",
+  "kma_weather_kasi_key",
 ] as const;
+const STORAGE_NOTE_TITLE = "kma_weather_note_title";
+const STORAGE_NOTE_BODY = "kma_weather_note_body";
+
+type DataLoadToolbarState = "loading" | "complete" | "error";
+
+function labelForDataLoadState(state: DataLoadToolbarState): string {
+  if (state === "loading") return "로드중";
+  if (state === "error") return "로드 실패";
+  return "로드완료";
+}
+
+function setToolbarLoadState(app: HTMLElement, state: DataLoadToolbarState) {
+  const el = app.querySelector<HTMLElement>("#data-load-status");
+  if (!el) return;
+  el.dataset.state = state;
+  const label = el.querySelector(".data-load-status-label");
+  if (label) label.textContent = labelForDataLoadState(state);
+}
+
+function html2CanvasCloneNoteInputs(clonedRoot: HTMLElement) {
+  clonedRoot.querySelectorAll<HTMLInputElement>(".today-note-short").forEach((input) => {
+    const el = input.ownerDocument.createElement("div");
+    el.className = input.className;
+    el.textContent = input.value;
+    input.replaceWith(el);
+  });
+}
+
+function warmupWeatherExportCanvas(app: HTMLElement) {
+  const sheet = app.querySelector<HTMLElement>("#weather-export-root");
+  if (!sheet) return;
+  const run = () => {
+    void html2canvas(sheet, {
+      scale: 1,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      onclone: (_doc, clonedRoot) => {
+        html2CanvasCloneNoteInputs(clonedRoot);
+      },
+    }).catch(() => {});
+  };
+  requestAnimationFrame(() => requestAnimationFrame(run));
+}
+
+function getStoredApiKey(): string {
+  const v = localStorage.getItem(STORAGE_API_KEY);
+  if (v) return v;
+  for (const k of LEGACY_KEYS) {
+    const legacy = localStorage.getItem(k);
+    if (legacy) return legacy;
+  }
+  return "";
+}
+
+function setStoredApiKey(key: string) {
+  localStorage.setItem(STORAGE_API_KEY, key);
+  for (const k of LEGACY_KEYS) {
+    localStorage.removeItem(k);
+  }
+}
+
+function clearStoredApiKey() {
+  localStorage.removeItem(STORAGE_API_KEY);
+  for (const k of LEGACY_KEYS) {
+    localStorage.removeItem(k);
+  }
+}
+
+/** 잘못된 키·인증 거부로 보일 때 저장된 키 제거 */
+function clearStoredKeyIfInvalid(message: string) {
+  if (/\b(401|403)\b/.test(message)) clearStoredApiKey();
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -48,6 +122,42 @@ function dustClassName(grade: DustLevel) {
   if (grade === "보통") return "dust-circle dust-normal";
   if (grade === "나쁨") return "dust-circle dust-bad";
   return "dust-circle dust-very-bad";
+}
+
+function emptyDaily(): DailyWeather {
+  return {
+    date: "",
+    minTemp: null,
+    maxTemp: null,
+    sky: null,
+    amSky: null,
+    pmSky: null,
+    amPop: null,
+    pmPop: null,
+  };
+}
+
+const EMPTY_ASTRO: AstroTimes = {
+  sunrise: null,
+  sunset: null,
+  moonrise: null,
+  moonset: null,
+};
+
+function createEmptyWeatherResult(): WeatherResult {
+  return {
+    base: { baseDate: "-", baseTime: "-" },
+    updatedAt: "",
+    data: MAP_CITIES.map((c) => ({
+      city: c.name,
+      lat: c.lat,
+      lon: c.lon,
+      tomorrow: emptyDaily(),
+      dayAfterTomorrow: emptyDaily(),
+      threeDaysLater: emptyDaily(),
+    })),
+    warnings: [],
+  };
 }
 
 function formatKstFilenameTimestamp() {
@@ -161,7 +271,15 @@ function renderCompactDayTable(
   `;
 }
 
-function renderPage(weather: WeatherResult, astro: AstroTimes, dust: DustData) {
+function renderPage(
+  weather: WeatherResult,
+  astro: AstroTimes,
+  dust: DustData,
+  loadToolbarState: DataLoadToolbarState = "complete",
+) {
+  const noteTitle = localStorage.getItem(STORAGE_NOTE_TITLE) ?? "";
+  const noteBody = localStorage.getItem(STORAGE_NOTE_BODY) ?? "";
+
   const weatherByCity = new Map(weather.data.map((item) => [item.city, item]));
   const tableRows = TABLE_CITIES.map((city) => weatherByCity.get(city)).filter(
     (item): item is CityWeather => Boolean(item),
@@ -230,18 +348,40 @@ function renderPage(weather: WeatherResult, astro: AstroTimes, dust: DustData) {
     )
     .join("");
 
-  const updated = escapeHtml(
-    new Date(weather.updatedAt).toLocaleString("ko-KR", {
-      timeZone: "Asia/Seoul",
-    }),
-  );
+  const updated =
+    weather.updatedAt.trim() !== "" && !Number.isNaN(Date.parse(weather.updatedAt))
+      ? escapeHtml(
+          new Date(weather.updatedAt).toLocaleString("ko-KR", {
+            timeZone: "Asia/Seoul",
+          }),
+        )
+      : "-";
+
+  const loadStatusLabel = labelForDataLoadState(loadToolbarState);
 
   return `
     <main class="page">
       <div class="sheet-toolbar">
-        <button type="button" class="png-download-btn" id="png-download-btn">
-          PNG로 저장
+        <button type="button" class="settings-btn" id="settings-btn" aria-haspopup="dialog">
+          설정
         </button>
+        <div
+          class="sheet-toolbar-status"
+          id="data-load-status"
+          data-state="${loadToolbarState}"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="data-load-status-label">${loadStatusLabel}</span>
+        </div>
+        <div class="sheet-toolbar-actions">
+          <button type="button" class="weather-refresh-btn" id="weather-refresh-btn">
+            데이터 새로고침
+          </button>
+          <button type="button" class="png-download-btn" id="png-download-btn">
+            PNG로 저장
+          </button>
+        </div>
       </div>
       <div class="a4-sheet" id="weather-export-root">
         <header class="print-head">
@@ -261,12 +401,13 @@ function renderPage(weather: WeatherResult, astro: AstroTimes, dust: DustData) {
                 class="today-note-short"
                 type="text"
                 placeholder="날씨 제목 여기에"
+                value="${escapeHtml(noteTitle)}"
               />
             </div>
             <textarea
               class="today-note-long"
               placeholder="여기에 본문을 입력해 주세요."
-            ></textarea>
+            >${escapeHtml(noteBody)}</textarea>
           </section>
           ${renderAstroCard(astro)}
         </div>
@@ -345,6 +486,9 @@ function bindPngDownload(container: HTMLElement) {
         logging: false,
         scrollX: 0,
         scrollY: -window.scrollY,
+        onclone: (_doc, clonedRoot) => {
+          html2CanvasCloneNoteInputs(clonedRoot);
+        },
       });
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/png", 1),
@@ -367,58 +511,142 @@ function bindPngDownload(container: HTMLElement) {
   });
 }
 
-function renderError(message: string) {
-  return `
-    <main class="page">
-      <div class="a4-sheet">
-        <section class="card error-card">
-          <h1>기상 데이터 로딩 실패</h1>
-          <p>${escapeHtml(message)}</p>
-        </section>
-      </div>
-    </main>
-  `;
+async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
+  const [weather, astro, dust] = await Promise.all([
+    getWeatherData(apiKey),
+    getAstroTimes(apiKey),
+    getDustData(apiKey),
+  ]);
+  app.innerHTML = renderPage(weather, astro, dust);
+  bindPngDownload(app);
+  bindTodayNotePersistence(app);
+  bindWeatherRefresh(app, apiKey);
+  bindSettingsButton(app);
 }
 
-function showApiKeyForm(app: HTMLElement) {
-  const savedKma = localStorage.getItem(STORAGE_KMA) ?? "";
-  const savedAir = localStorage.getItem(STORAGE_AIR) ?? "";
-  const savedKasi = localStorage.getItem(STORAGE_KASI) ?? "";
+function showEmptyShell(
+  app: HTMLElement,
+  apiKey: string,
+  options?: { loadToolbarState?: DataLoadToolbarState; keylessPreview?: boolean },
+) {
+  const loadToolbarState = options?.loadToolbarState ?? "complete";
+  app.innerHTML = renderPage(
+    createEmptyWeatherResult(),
+    EMPTY_ASTRO,
+    createEmptyDustData(),
+    loadToolbarState,
+  );
+  bindPngDownload(app);
+  bindTodayNotePersistence(app);
+  if (options?.keylessPreview) {
+    const refreshBtn = app.querySelector<HTMLButtonElement>("#weather-refresh-btn");
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.title = "API 키를 입력한 뒤 데이터 새로고침을 사용할 수 있습니다.";
+    }
+  } else {
+    bindWeatherRefresh(app, apiKey);
+  }
+  bindSettingsButton(app);
+}
 
-  app.innerHTML = `
-    <div class="api-key-overlay">
-      <div class="api-key-dialog" role="dialog" aria-labelledby="api-key-title">
+function bindWeatherRefresh(container: HTMLElement, apiKey: string) {
+  const btn = container.querySelector<HTMLButtonElement>("#weather-refresh-btn");
+  if (!btn) return;
+
+  const refreshLabel = "데이터 새로고침";
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const png = container.querySelector<HTMLButtonElement>("#png-download-btn");
+    const settings = container.querySelector<HTMLButtonElement>("#settings-btn");
+    if (png) png.disabled = true;
+    if (settings) settings.disabled = true;
+    setToolbarLoadState(container, "loading");
+    try {
+      await loadWeatherIntoApp(container, apiKey);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
+      clearStoredKeyIfInvalid(message);
+      setToolbarLoadState(container, "error");
+      window.alert(message);
+    } finally {
+      const refreshAgain = container.querySelector<HTMLButtonElement>(
+        "#weather-refresh-btn",
+      );
+      const pngAgain = container.querySelector<HTMLButtonElement>("#png-download-btn");
+      const settingsAgain = container.querySelector<HTMLButtonElement>("#settings-btn");
+      if (refreshAgain) {
+        refreshAgain.disabled = false;
+        refreshAgain.textContent = refreshLabel;
+      }
+      if (pngAgain) pngAgain.disabled = false;
+      if (settingsAgain) settingsAgain.disabled = false;
+    }
+  });
+}
+
+function bindTodayNotePersistence(container: HTMLElement) {
+  const titleEl = container.querySelector<HTMLInputElement>(".today-note-short");
+  const bodyEl = container.querySelector<HTMLTextAreaElement>(".today-note-long");
+  if (!titleEl || !bodyEl) return;
+
+  const save = () => {
+    localStorage.setItem(STORAGE_NOTE_TITLE, titleEl.value);
+    localStorage.setItem(STORAGE_NOTE_BODY, bodyEl.value);
+  };
+  titleEl.addEventListener("input", save);
+  bodyEl.addEventListener("input", save);
+}
+
+function renderApiKeyDialogHtml(saved: string, variant: "fullscreen" | "settings") {
+  const overlayOpen =
+    variant === "settings"
+      ? `<div class="api-key-overlay" id="api-key-settings-overlay">`
+      : `<div class="api-key-overlay">`;
+  const closeBtn =
+    variant === "settings"
+      ? `<button type="button" class="secondary" id="api-key-dialog-close">닫기</button>`
+      : "";
+  return `
+    ${overlayOpen}
+      <div class="api-key-dialog" role="dialog" aria-modal="true" aria-labelledby="api-key-title">
         <h2 id="api-key-title">API 키 입력</h2>
         <p class="api-key-hint">
-          공공데이터포털·에어코리아 등에서 발급받은 서비스 키를 입력하세요. 키는 이 브라우저의 로컬 저장소(localStorage)에 저장되며, 같은 기기·브라우저에서는 다음에도 유지됩니다.
+          공공데이터포털 등에서 발급받은 서비스 키 하나를 입력하세요. 기상·미세먼지·천문 API에 동일하게 사용됩니다. 이 브라우저의 localStorage에 저장됩니다.
         </p>
         <form id="api-key-form">
           <div class="api-key-field">
-            <label for="kma-key">기상청 단기예보 (KMA)</label>
-            <input id="kma-key" name="kma" type="password" autocomplete="off" value="${escapeHtml(savedKma)}" placeholder="VilageFcstInfoService_2.0" />
-          </div>
-          <div class="api-key-field">
-            <label for="air-key">한국환경공단 미세먼지 (Air Korea)</label>
-            <input id="air-key" name="air" type="password" autocomplete="off" value="${escapeHtml(savedAir)}" placeholder="한국환경공단 OpenAPI" />
-          </div>
-          <div class="api-key-field">
-            <label for="kasi-key">천문대 일출·월출 (KASI)</label>
-            <input id="kasi-key" name="kasi" type="password" autocomplete="off" value="${escapeHtml(savedKasi)}" placeholder="RiseSetInfoService" />
+            <label for="api-key-input">서비스 키</label>
+            <input id="api-key-input" name="apiKey" type="password" autocomplete="off" value="${escapeHtml(saved)}" placeholder="공공데이터포털 인증키" />
+            <div class="api-key-show-row">
+              <input type="checkbox" id="api-key-show" />
+              <label for="api-key-show">키 표시</label>
+            </div>
           </div>
           <div class="api-key-error" id="api-key-error" role="alert"></div>
           <div class="api-key-actions">
-            <button type="submit" id="api-key-submit">불러오기</button>
+            <button type="submit" id="api-key-submit">키 입력</button>
+            ${closeBtn}
             <button type="button" class="secondary" id="api-key-clear">저장된 키 지우기</button>
           </div>
         </form>
       </div>
     </div>
   `;
+}
 
-  const form = app.querySelector<HTMLFormElement>("#api-key-form");
-  const errEl = app.querySelector<HTMLDivElement>("#api-key-error");
-  const submitBtn = app.querySelector<HTMLButtonElement>("#api-key-submit");
-  const clearBtn = app.querySelector<HTMLButtonElement>("#api-key-clear");
+function attachApiKeyFormHandlers(
+  scope: HTMLElement,
+  ctx: { app: HTMLElement; mode: "fullscreen" | "settings" },
+  fetchError?: string,
+) {
+  const form = scope.querySelector<HTMLFormElement>("#api-key-form");
+  const errEl = scope.querySelector<HTMLDivElement>("#api-key-error");
+  const submitBtn = scope.querySelector<HTMLButtonElement>("#api-key-submit");
+  const clearBtn = scope.querySelector<HTMLButtonElement>("#api-key-clear");
+  const closeBtn = scope.querySelector<HTMLButtonElement>("#api-key-dialog-close");
 
   function setError(msg: string) {
     if (!errEl) return;
@@ -426,52 +654,123 @@ function showApiKeyForm(app: HTMLElement) {
     errEl.classList.toggle("visible", Boolean(msg));
   }
 
+  let escapeHandler: ((e: KeyboardEvent) => void) | undefined;
+
+  const dismissSettingsOverlay = () => {
+    if (ctx.mode !== "settings") return;
+    if (escapeHandler) document.removeEventListener("keydown", escapeHandler);
+    escapeHandler = undefined;
+    scope.remove();
+  };
+
+  if (ctx.mode === "settings") {
+    escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismissSettingsOverlay();
+    };
+    document.addEventListener("keydown", escapeHandler);
+    scope.addEventListener("click", (e) => {
+      if (e.target === scope) dismissSettingsOverlay();
+    });
+    closeBtn?.addEventListener("click", dismissSettingsOverlay);
+  }
+
   clearBtn?.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_KMA);
-    localStorage.removeItem(STORAGE_AIR);
-    localStorage.removeItem(STORAGE_KASI);
-    for (const id of ["#kma-key", "#air-key", "#kasi-key"] as const) {
-      const el = app.querySelector<HTMLInputElement>(id);
-      if (el) el.value = "";
-    }
+    clearStoredApiKey();
+    const input = scope.querySelector<HTMLInputElement>("#api-key-input");
+    if (input) input.value = "";
     setError("");
   });
+
+  const keyInput = scope.querySelector<HTMLInputElement>("#api-key-input");
+  const showKey = scope.querySelector<HTMLInputElement>("#api-key-show");
+  showKey?.addEventListener("change", () => {
+    if (keyInput) keyInput.type = showKey.checked ? "text" : "password";
+  });
+
+  if (fetchError) setError(fetchError);
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     setError("");
 
-    const kma = app.querySelector<HTMLInputElement>("#kma-key")?.value.trim() ?? "";
-    const air = app.querySelector<HTMLInputElement>("#air-key")?.value.trim() ?? "";
-    const kasi = app.querySelector<HTMLInputElement>("#kasi-key")?.value.trim() ?? "";
+    const apiKey = scope.querySelector<HTMLInputElement>("#api-key-input")?.value.trim() ?? "";
 
-    if (!kma || !air || !kasi) {
-      setError("세 가지 API 키를 모두 입력해 주세요.");
+    if (!apiKey) {
+      setError("API 키를 입력해 주세요.");
       return;
     }
 
-    localStorage.setItem(STORAGE_KMA, kma);
-    localStorage.setItem(STORAGE_AIR, air);
-    localStorage.setItem(STORAGE_KASI, kasi);
+    setStoredApiKey(apiKey);
 
     if (submitBtn) submitBtn.disabled = true;
-    app.innerHTML = `<div class="app-loading">데이터를 불러오는 중…</div>`;
 
     try {
-      const [weather, astro, dust] = await Promise.all([
-        getWeatherData(kma),
-        getAstroTimes(kasi),
-        getDustData(air),
-      ]);
-      app.innerHTML = renderPage(weather, astro, dust);
-      bindPngDownload(app);
+      if (ctx.mode === "fullscreen") {
+        showEmptyShell(ctx.app, apiKey, { loadToolbarState: "loading" });
+        await loadWeatherIntoApp(ctx.app, apiKey);
+      } else {
+        if (escapeHandler) document.removeEventListener("keydown", escapeHandler);
+        escapeHandler = undefined;
+        await loadWeatherIntoApp(ctx.app, apiKey);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
-      app.innerHTML = renderError(message);
+      clearStoredKeyIfInvalid(message);
+      if (ctx.mode === "fullscreen") {
+        showApiKeyForm(ctx.app, message);
+      } else {
+        setError(message);
+      }
+    } finally {
+      if (ctx.mode === "settings" && submitBtn) submitBtn.disabled = false;
     }
   });
 }
 
-const root = document.querySelector<HTMLDivElement>("#app");
-if (root) showApiKeyForm(root);
+function showApiKeyForm(app: HTMLElement, fetchError?: string) {
+  const saved = getStoredApiKey();
+  showEmptyShell(app, "", { loadToolbarState: "loading", keylessPreview: true });
+  app.insertAdjacentHTML("beforeend", renderApiKeyDialogHtml(saved, "fullscreen"));
+  attachApiKeyFormHandlers(app, { app, mode: "fullscreen" }, fetchError);
+  warmupWeatherExportCanvas(app);
+}
+
+function openApiKeySettingsDialog(app: HTMLElement) {
+  if (app.querySelector("#api-key-settings-overlay")) return;
+  app.insertAdjacentHTML("beforeend", renderApiKeyDialogHtml(getStoredApiKey(), "settings"));
+  const overlay = app.querySelector<HTMLElement>("#api-key-settings-overlay");
+  if (!overlay) return;
+  attachApiKeyFormHandlers(overlay, { app, mode: "settings" });
+  overlay.querySelector<HTMLInputElement>("#api-key-input")?.focus();
+}
+
+function bindSettingsButton(app: HTMLElement) {
+  const btn = app.querySelector<HTMLButtonElement>("#settings-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => openApiKeySettingsDialog(app));
+}
+
+async function bootstrap() {
+  const root = document.querySelector<HTMLDivElement>("#app");
+  if (!root) return;
+
+  const key = getStoredApiKey().trim();
+  if (!key) {
+    showApiKeyForm(root);
+    return;
+  }
+
+  showEmptyShell(root, key, { loadToolbarState: "loading" });
+  try {
+    await loadWeatherIntoApp(root, key);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
+    clearStoredKeyIfInvalid(message);
+    setToolbarLoadState(root, "error");
+    window.alert(message);
+  }
+}
+
+void bootstrap();

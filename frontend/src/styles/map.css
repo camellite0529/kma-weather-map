@@ -123,18 +123,3 @@
     display: none !important;
   }
 }
-
-@media screen and (max-width: 768px) {
-  .map-marker {
-    min-width: 82px;
-    max-width: 112px;
-  }
-
-  .marker-weather {
-    font-size: 14px;
-  }
-
-  .marker-line {
-    font-size: 10px;
-  }
-}
