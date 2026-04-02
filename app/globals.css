@@ -160,7 +160,7 @@ body {
 
 .top-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 4mm;
   align-items: start;
   margin-bottom: 2.4mm;
@@ -168,7 +168,7 @@ body {
 
 .news-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 4mm;
   align-items: start;
 }
