@@ -185,6 +185,7 @@ function CompactDayTable({
           {rows.map((row) => (
             <tr key={`${title}-${row.city}`}>
               <th scope="row">{row.city}</th>
+              <td>{row[kind].sky ?? "-"}</td> 
               <td>
                 {tempText(row[kind].minTemp)} / {tempText(row[kind].maxTemp)}
               </td>
