@@ -5,6 +5,13 @@ export type AstroTimes = {
   moonset: string | null;
 };
 
+function kasiApiOrigin(): string {
+  if (import.meta.env.DEV) {
+    return `${window.location.origin}/__proxy/kma`;
+  }
+  return "https://apis.data.go.kr";
+}
+
 function formatHHMM(value?: string | null) {
   if (!value) return null;
   const digits = String(value).replace(/\D/g, "");
@@ -24,24 +31,19 @@ function getTomorrowDateKST() {
   return `${yyyy}${mm}${dd}`;
 }
 
-export async function getAstroTimes(): Promise<AstroTimes> {
-  const serviceKey = process.env.KASI_SERVICE_KEY;
-
-  if (!serviceKey) {
-    throw new Error("KASI_SERVICE_KEY 환경변수가 없습니다.");
-  }
+export async function getAstroTimes(kasiServiceKey: string): Promise<AstroTimes> {
+  const serviceKey = kasiServiceKey.trim();
 
   const encodedServiceKey = /%[0-9A-Fa-f]{2}/.test(serviceKey)
-    ? serviceKey.trim()
-    : encodeURIComponent(serviceKey.trim());
+    ? serviceKey
+    : encodeURIComponent(serviceKey);
 
   const params = new URLSearchParams({
     locdate: getTomorrowDateKST(),
     location: "서울",
   });
 
-  const url =
-    `https://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo?serviceKey=${encodedServiceKey}&${params.toString()}`;
+  const url = `${kasiApiOrigin()}/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo?serviceKey=${encodedServiceKey}&${params.toString()}`;
 
   const res = await fetch(url, { cache: "no-store" });
 

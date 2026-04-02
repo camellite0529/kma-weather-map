@@ -1,4 +1,4 @@
-import { getTargetDate } from "@/lib/kma";
+import { getTargetDate } from "./kma";
 
 export type DustLevel = "좋음" | "보통" | "나쁨" | "매우 나쁨";
 
@@ -22,8 +22,14 @@ type DustForecastItem = {
   informGrade?: string;
 };
 
-const BASE_URL =
-  "https://api.odcloud.kr/api/MinuDustFrcstDspthSvrc/v1/getMinuDustFrcstDspth";
+function dustApiOrigin(): string {
+  if (import.meta.env.DEV) {
+    return `${window.location.origin}/__proxy/air`;
+  }
+  return "https://api.odcloud.kr";
+}
+
+const BASE_URL = `${dustApiOrigin()}/api/MinuDustFrcstDspthSvrc/v1/getMinuDustFrcstDspth`;
 
 const REGION_GROUPS = [
   { region: "서울", displayLabel: "서울", aliases: ["서울"] },
@@ -121,14 +127,12 @@ function normalizeAnnouncedAt(value?: string) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
-async function fetchForecast(informCode: "PM10" | "PM25", targetDate: string) {
-  const rawKey = process.env.AIRKOREA_SERVICE_KEY;
-
-  if (!rawKey) {
-    throw new Error("AIRKOREA_SERVICE_KEY 환경변수가 없습니다.");
-  }
-
-  const serviceKey = normalizeServiceKey(rawKey);
+async function fetchForecast(
+  serviceKey: string,
+  informCode: "PM10" | "PM25",
+  targetDate: string,
+) {
+  const normalizedKey = normalizeServiceKey(serviceKey);
 
   const params = new URLSearchParams({
     returnType: "json",
@@ -138,9 +142,9 @@ async function fetchForecast(informCode: "PM10" | "PM25", targetDate: string) {
     informCode,
   });
 
-  const encodedServiceKey = isLikelyEncodedKey(serviceKey)
-    ? serviceKey
-    : encodeURIComponent(serviceKey);
+  const encodedServiceKey = isLikelyEncodedKey(normalizedKey)
+    ? normalizedKey
+    : encodeURIComponent(normalizedKey);
 
   const res = await fetch(
     `${BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`,
@@ -167,12 +171,12 @@ async function fetchForecast(informCode: "PM10" | "PM25", targetDate: string) {
   return matched;
 }
 
-export async function getDustData(): Promise<DustData> {
+export async function getDustData(airkoreaServiceKey: string): Promise<DustData> {
   const targetDate = formatDashedDate(getTargetDate(1));
 
   const [pm10Data, pm25Data] = await Promise.all([
-    fetchForecast("PM10", targetDate),
-    fetchForecast("PM25", targetDate),
+    fetchForecast(airkoreaServiceKey, "PM10", targetDate),
+    fetchForecast(airkoreaServiceKey, "PM25", targetDate),
   ]);
 
   const pm10GradeText = pm10Data.informGrade ?? "";

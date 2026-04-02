@@ -1,0 +1,14 @@
+{
+  "name": "kma-weather-map",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "html2canvas": "^1.4.1",
+    "vite": "^6.0.7"
+  }
+}

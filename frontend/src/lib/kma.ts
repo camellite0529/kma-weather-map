@@ -151,15 +151,14 @@ export function getBaseDateTime() {
 
 export function getTargetDate(offsetDays: number) {
   const now = new Date();
-    now.setUTCHours(now.getUTCHours() + 9 + (offsetDays * 24));
-  
+  now.setUTCHours(now.getUTCHours() + 9 + offsetDays * 24);
+
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(now.getUTCDate()).padStart(2, "0");
 
   return `${yyyy}${mm}${dd}`;
 }
-
 
 type WeatherLabel =
   | "맑음"
@@ -192,7 +191,7 @@ export function ptyCodeToText(
 ): WeatherLabel | null {
   const code = String(value ?? "0");
 
-  if (code === "1" || code === "5" || code === "4" ) return "비";
+  if (code === "1" || code === "5" || code === "4") return "비";
   if (code === "2" || code === "6") return "비나눈";
   if (code === "3" || code === "7") return "눈";
 
@@ -263,7 +262,6 @@ function mergeMorningAfternoonWeather(
 
   if (morning === afternoon) return morning;
 
-  // direct group compression
   if (
     (morning === "맑음" && afternoon === "구름조금") ||
     (morning === "구름조금" && afternoon === "맑음")
@@ -275,26 +273,18 @@ function mergeMorningAfternoonWeather(
     return "흐림";
   }
 
-  // precipitation combinations
   if (morning === "비" && afternoon === "비나눈") {
     return "비나눈";
   }
 
-  if (
-    (morning === "비나눈" || morning === "눈") &&
-    afternoon === "비"
-  ) {
+  if ((morning === "비나눈" || morning === "눈") && afternoon === "비") {
     return "비나눈";
   }
 
-  if (
-    (morning === "비나눈" || morning === "비") &&
-    afternoon === "눈"
-  ) {
+  if ((morning === "비나눈" || morning === "비") && afternoon === "눈") {
     return "비나눈";
   }
 
-  // sky -> sky transitions
   if (isClearGroup(morning) && isCloudGroup(afternoon)) {
     return "차차흐림";
   }
@@ -303,7 +293,6 @@ function mergeMorningAfternoonWeather(
     return "흐린후갬";
   }
 
-  // sky -> precipitation
   if (isSkyGroup(morning) && (afternoon === "비" || afternoon === "비나눈")) {
     return "흐린후비";
   }
@@ -312,17 +301,14 @@ function mergeMorningAfternoonWeather(
     return "눈";
   }
 
-  // precipitation -> sky
   if ((morning === "비" || morning === "비나눈") && isSkyGroup(afternoon)) {
     return "비후갬";
   }
 
-  if (
-    morning === "눈" && isSkyGroup(afternoon)) {
+  if (morning === "눈" && isSkyGroup(afternoon)) {
     return "눈";
   }
 
-  // safe fallbacks
   if (afternoon === "눈") return "눈";
   if (afternoon === "비나눈") return "비나눈";
   if (afternoon === "비") return "비";
@@ -335,8 +321,7 @@ function mergeMorningAfternoonWeather(
 }
 
 function getPrecipCategoryItems(dayItems: ForecastItem[]) {
-  return dayItems.filter(
-    (item) => item.category === "POP"  );
+  return dayItems.filter((item) => item.category === "POP");
 }
 
 export function summarizeDailyWeather(

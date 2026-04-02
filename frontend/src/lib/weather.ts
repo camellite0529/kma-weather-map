@@ -3,10 +3,17 @@ import {
   getBaseDateTime,
   getTargetDate,
   latLonToGrid,
-  summarizeDailyWeather
-} from "@/lib/kma";
+  summarizeDailyWeather,
+} from "./kma";
 
-const BASE_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+function kmaApiOrigin(): string {
+  if (import.meta.env.DEV) {
+    return `${window.location.origin}/__proxy/kma`;
+  }
+  return "https://apis.data.go.kr";
+}
+
+const BASE_URL = `${kmaApiOrigin()}/1360000/VilageFcstInfoService_2.0/getVilageFcst`;
 const REQUEST_TIMEOUT_MS = 12000;
 const MAX_RETRIES = 2;
 const CONCURRENCY = 5;
@@ -18,7 +25,7 @@ type WeatherWarning = {
 
 type DailyWeatherSummary = ReturnType<typeof summarizeDailyWeather>;
 
-type WeatherResult = {
+export type WeatherResult = {
   base: { baseDate: string; baseTime: string };
   updatedAt: string;
   data: Array<{
@@ -49,7 +56,7 @@ function buildRequestUrl({
   baseDate,
   baseTime,
   nx,
-  ny
+  ny,
 }: {
   serviceKey: string;
   baseDate: string;
@@ -68,7 +75,7 @@ function buildRequestUrl({
     base_date: baseDate,
     base_time: baseTime,
     nx: String(nx),
-    ny: String(ny)
+    ny: String(ny),
   });
 
   return `${BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`;
@@ -81,24 +88,29 @@ async function fetchWithTimeout(url: string) {
   try {
     return await fetch(url, {
       signal: controller.signal,
-      cache: "no-store"
+      cache: "no-store",
     });
   } finally {
     clearTimeout(timeout);
   }
 }
 
-async function fetchCityForecast(cityName: string, lat: number, lon: number) {
-  const rawServiceKey = process.env.KMA_SERVICE_KEY;
-
-  if (!rawServiceKey) {
-    throw new Error("KMA_SERVICE_KEY 환경변수가 없습니다.");
-  }
-
-  const serviceKey = normalizeServiceKey(rawServiceKey);
+async function fetchCityForecast(
+  serviceKey: string,
+  cityName: string,
+  lat: number,
+  lon: number,
+) {
+  const normalizedKey = normalizeServiceKey(serviceKey);
   const { baseDate, baseTime } = getBaseDateTime();
   const { nx, ny } = latLonToGrid(lat, lon);
-  const url = buildRequestUrl({ serviceKey, baseDate, baseTime, nx, ny });
+  const url = buildRequestUrl({
+    serviceKey: normalizedKey,
+    baseDate,
+    baseTime,
+    nx,
+    ny,
+  });
 
   let lastError: Error | null = null;
 
@@ -108,7 +120,9 @@ async function fetchCityForecast(cityName: string, lat: number, lon: number) {
 
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        throw new Error(`${cityName} API 호출 실패: ${res.status}${body ? ` ${body.slice(0, 120)}` : ""}`);
+        throw new Error(
+          `${cityName} API 호출 실패: ${res.status}${body ? ` ${body.slice(0, 120)}` : ""}`,
+        );
       }
 
       const json = await res.json();
@@ -116,7 +130,9 @@ async function fetchCityForecast(cityName: string, lat: number, lon: number) {
       const resultMsg = json?.response?.header?.resultMsg;
 
       if (resultCode && resultCode !== "00") {
-        throw new Error(`${cityName} API 응답 오류: ${resultCode} ${resultMsg ?? ""}`.trim());
+        throw new Error(
+          `${cityName} API 응답 오류: ${resultCode} ${resultMsg ?? ""}`.trim(),
+        );
       }
 
       const items = json?.response?.body?.items?.item ?? [];
@@ -135,7 +151,7 @@ async function fetchCityForecast(cityName: string, lat: number, lon: number) {
         lon,
         tomorrow: summarizeDailyWeather(items, tomorrowDate),
         dayAfterTomorrow: summarizeDailyWeather(items, dayAfterTomorrowDate),
-        threeDaysLater: summarizeDailyWeather(items, threeDaysLaterDate)
+        threeDaysLater: summarizeDailyWeather(items, threeDaysLaterDate),
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("알 수 없는 오류");
@@ -157,7 +173,11 @@ async function fetchCityForecast(cityName: string, lat: number, lon: number) {
   throw lastError ?? new Error(`${cityName} API 호출 실패`);
 }
 
-async function runInBatches<T, R>(items: T[], batchSize: number, worker: (item: T) => Promise<R>) {
+async function runInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  worker: (item: T) => Promise<R>,
+) {
   const results: PromiseSettledResult<R>[] = [];
 
   for (let i = 0; i < items.length; i += batchSize) {
@@ -169,22 +189,23 @@ async function runInBatches<T, R>(items: T[], batchSize: number, worker: (item: 
   return results;
 }
 
-export async function getWeatherData(): Promise<WeatherResult> {
+export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResult> {
   const settled = await runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
-    fetchCityForecast(city.name, city.lat, city.lon)
+    fetchCityForecast(kmaServiceKey, city.name, city.lat, city.lon),
   );
 
-  const data = settled
-    .filter((item): item is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchCityForecast>>> => item.status === "fulfilled")
-    .map((item) => item.value);
+  const data = settled.flatMap((r) =>
+    r.status === "fulfilled" ? [r.value] : [],
+  );
 
-  const warnings = settled
-    .filter((item): item is PromiseRejectedResult => item.status === "rejected")
-    .map((item) => {
-      const message = item.reason instanceof Error ? item.reason.message : "알 수 없는 오류";
-      const city = MAP_CITIES.find((candidate) => message.startsWith(candidate.name))?.name ?? "일부 지역";
-      return { city, message };
-    });
+  const warnings = settled.flatMap((item) => {
+    if (item.status !== "rejected") return [];
+    const message =
+      item.reason instanceof Error ? item.reason.message : "알 수 없는 오류";
+    const city =
+      MAP_CITIES.find((c) => message.startsWith(c.name))?.name ?? "일부 지역";
+    return [{ city, message }];
+  });
 
   if (data.length === 0) {
     const firstMessage = warnings[0]?.message ?? "날씨 정보를 불러오지 못했습니다.";
@@ -195,6 +216,6 @@ export async function getWeatherData(): Promise<WeatherResult> {
     base: getBaseDateTime(),
     updatedAt: new Date().toISOString(),
     data,
-    warnings
+    warnings,
   };
 }

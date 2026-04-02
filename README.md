@@ -1,130 +1,15 @@
 # KMA Weather Map
 
-기상청 단기예보 API를 이용해 다음 내용을 표시하는 Next.js + TypeScript 프로젝트입니다.
+지면용 날씨 레이아웃(Vite, TypeScript). 소스는 `frontend/`입니다.
 
-- 지도 위 **오늘 날씨(실제로는 내일)**
-  - 지역: 서울, 인천, 수원, 춘천, 속초, 강릉, 홍성, 세종, 청주, 안동, 대전, 전주, 대구, 포항, 울산, 창원, 부산, 광주, 목포, 여수, 제주, 울릉도, 독도
-  - 항목: 최저기온 / 최고기온 / 날씨상태(맑음, 구름조금, 구름많음, 흐림, 차차흐림, 흐린 후 갬, 비, 눈, 비나눈)
-  - 현재 날씨 분류 로직:  
-  morning 맑음 → afternoon 구름조금 = "구름조금"   
-  morning 구름조금 → afternoon 맑음 = "구름조금"  
-  morning 구름많음 or 흐림 → afternoon 구름많음 or 흐림 = "흐림"  
-  morning 비→ afternoon 비/눈 or 눈/비 = "비나눈"  
-  morning 비/눈 or 눈/비 or 눈 → afternoon 비 = "비나눈"  
-  morning 비/눈 or 눈/비 or 비 → afternoon 눈 = "비나눈"  
-  morning 비/눈 or 눈/비 → afternoon 비/눈 or 눈/비 = "비나눈"  
-  morning 맑음 or 구름조금 → afternoon 구름많음 or 흐림 = "차차흐림"  
-  morning 구름많음 or 흐림 → afternoon 맑음 or 구름조금 = "흐린후갬"  
-  morning 맑음 or 구름조금 or 구름많음 or 흐림 → afternoon 비 or 비/눈 or 눈/비 = "흐린후비"  
-  morning 비 or 비/눈 or 눈/비 → afternoon 맑음 or 구름조금 or 구름많음 or 흐림 = "비후갬"  
-  morning 맑음 or 구름조금 or 구름많음 or 흐림 → afternoon 눈= "눈"  
-  morning 눈 → afternoon 맑음 or 구름조금 or 구름많음 or 흐림 or 비/눈 or 눈/비 = "눈"  
-  
-- 표 형태의 **예상날씨(실제로는 모레 / 글피 기온)**
-  - 지역: 서울, 인천, 춘천, 강릉, 대전, 세종, 청주, 광주, 전주, 부산, 울산, 대구, 제주
-  - 항목: 최저기온 / 최고기온
-
-## 기술 스택
-
-- Next.js App Router
-- TypeScript
-- Vercel 배포 가능
-
-## 시작하기
-
-### 1) 의존성 설치
+## 실행
 
 ```bash
+cd frontend
 npm install
-```
-
-### 2) 환경변수 설정
-
-루트에 `.env.local` 파일을 만들고 아래 값을 넣으세요.
-
-```bash
-KMA_SERVICE_KEY=여기에_공공데이터포털_서비스키
-```
-
-서비스키는 공공데이터포털에서 받은 값을 그대로 넣으면 됩니다. 이 프로젝트는 인코딩 키와 디코딩 키를 모두 처리하도록 작성했습니다.
-
-### 2-1) 배경 지도 이미지 넣기
-
-가지고 있는 지도 사진 파일을 아래 경로에 넣으세요.
-
-```text
-public/map-bg.png
-```
-
-현재 코드는 **사진 기준 고정 좌표 방식**입니다.
-배경 이미지가 바뀌면 `lib/kma.ts`의 `MAP_MARKER_POSITIONS` 값을 이미지에 맞게 직접 조정하면 됩니다.
-또한 이미지 원본 비율에 맞춰 `app/globals.css`의 `aspect-ratio`도 수정하면 됩니다.
-
-예를 들어 이미지가 1200 x 1600이면 아래처럼 바꾸세요.
-
-```css
-.map-stage {
-  aspect-ratio: 1200 / 1600;
-}
-```
-
-### 3) 개발 서버 실행
-
-```bash
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000` 을 열면 됩니다.
+브라우저에서 기상청·미세먼지·천문 API 키를 입력합니다. 배포는 `npm run build` 후 `frontend/dist`를 정적 호스팅하면 됩니다.
 
-## 배포
-
-### Vercel
-
-1. GitHub에 이 프로젝트 업로드
-2. Vercel에서 저장소 import
-3. Environment Variables에 `KMA_SERVICE_KEY` 추가
-4. 배포
-
-## 폴더 구조
-
-```text
-.
-├── app
-│   ├── api
-│   │   └── weather
-│   │       └── route.ts
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── lib
-│   ├── kma.ts
-│   └── weather.ts
-├── public
-│   └── map-bg.png  # 직접 추가
-├── .env.example
-├── .gitignore
-├── next.config.ts
-├── next-env.d.ts
-├── package.json
-├── README.md
-└── tsconfig.json
-```
-
-## 구현 포인트
-
-- 발표시각은 `02, 05, 08, 11, 14, 17, 20, 23시` 중 가장 최근 것을 자동 선택합니다.
-- 외부 API 오류가 나면 자동 재시도하고, 일부 도시만 실패해도 전체 화면은 계속 표시되도록 처리했습니다.
-- 지도는 위경도 자동 배치가 아니라, **사진 기준 고정 좌표**를 사용하므로 화면 비율이 달라도 이미지와 마커가 함께 스케일됩니다.
-
-## 문제 해결
-
-### 배포 후 `401` 이 뜨는 경우
-
-다음 순서로 확인하세요.
-
-1. Vercel 환경변수 `KMA_SERVICE_KEY`가 정확한지 확인
-2. 배포 후 환경변수 변경 사항이 반영되도록 재배포
-3. 공공데이터포털에서 발급한 키를 복사할 때 공백이 섞이지 않았는지 확인
-4. API 서버가 간헐적으로 실패할 수 있으므로 한 번 더 새로고침
-
-이 프로젝트는 서비스키 인코딩 형태를 자동 처리하고, 외부 API 실패 시 재시도 및 부분 성공 렌더링을 지원합니다.
+지도 배경은 `frontend/public/map-bg.png`에 두면 됩니다.

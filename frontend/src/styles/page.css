@@ -10,6 +10,143 @@
   --pm: #6f8fcf;
 }
 
+.api-key-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.api-key-dialog {
+  width: min(440px, 100%);
+  padding: 24px;
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+.api-key-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.api-key-hint {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.api-key-field {
+  margin-bottom: 14px;
+}
+
+.api-key-field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.api-key-field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.api-key-field input:focus {
+  outline: 2px solid rgba(17, 17, 17, 0.25);
+  outline-offset: 0;
+}
+
+.api-key-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.api-key-actions button {
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.api-key-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.api-key-actions .secondary {
+  background: #fff;
+  color: #111;
+}
+
+.api-key-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 6px;
+  display: none;
+}
+
+.api-key-error.visible {
+  display: block;
+}
+
+.app-loading {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.sheet-toolbar {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto 10px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 6mm;
+  box-sizing: border-box;
+}
+
+.png-download-btn {
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.png-download-btn:hover {
+  background: #f5f5f5;
+}
+
+.png-download-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -177,126 +314,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2.2mm;
-} 
-
-.layout-map {
-  min-height: 0;
-}
-
-.map-shell {
-  width: 100%;
-}
-
-.map-stage {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1296 / 2013;
-  overflow: hidden;
-  background: #ececec;
-  border-radius: 2mm;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.map-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-}
-
-.map-marker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  min-width: 17.6mm;
-  max-width: 26mm;
-}
-
-.marker-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3mm;
-  padding: 0.9mm 1.2mm;
-  border-radius: 1.8mm;
-  background: rgba(255, 255, 255, 0.96);
-  color: #111111;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.marker-weather {
-  font-size: 4.5mm;
-  font-weight: 400;
-  line-height: 1.1;
-}
-
-.marker-line {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.8mm;
-  align-items: center;
-  white-space: nowrap;
-  font-size: 3.3mm;
-  line-height: 1.1;
-}
-
-.marker-city {
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.marker-temp {
-  color: #333333;
-  white-space: nowrap;
-}
-
-.marker-tooltip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 1.2mm);
-  transform: translateX(-50%);
-  min-width: 18mm;
-  padding: 1.2mm 1.6mm;
-  border-radius: 1.6mm;
-  background: rgba(17, 17, 17, 0.94);
-  color: #ffffff;
-  font-size: 2.8mm;
-  line-height: 1.3;
-  white-space: nowrap;
-  box-shadow: 0 1.2mm 3mm rgba(0, 0, 0, 0.18);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 120ms ease;
-  z-index: 20;
-}
-
-.marker-tooltip-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.4mm;
-}
-
-.marker-tooltip-row + .marker-tooltip-row {
-  margin-top: 0.6mm;
-}
-
-.marker-tooltip-label {
-  color: rgba(255, 255, 255, 0.78);
-  font-weight: 700;
-}
-
-.marker-tooltip-value {
-  font-weight: 700;
-}
-
-.map-marker:hover .marker-tooltip,
-.map-marker:focus-within .marker-tooltip {
-  opacity: 1;
-  visibility: visible;
 }
 
 .top-layout > .astro-card {
@@ -526,7 +543,7 @@ body {
   grid-column: 1 / -1;
   padding-top: 0.4mm;
   margin-top: -0.8mm;
-} 
+}
 
 .dust-header {
   align-items: center;
@@ -546,7 +563,7 @@ body {
   font-size: 2.3mm;
   color: var(--muted);
   white-space: nowrap;
-} 
+}
 
 .dust-table {
   display: flex;
@@ -615,7 +632,7 @@ body {
 .dust-very-bad {
   background: #e53e3e;
   color: #e53e3e;
-} 
+}
 
 .dust-legend {
   display: flex;
@@ -646,6 +663,10 @@ body {
     background: #fff;
   }
 
+  .sheet-toolbar {
+    display: none !important;
+  }
+
   .page {
     padding: 0;
   }
@@ -668,7 +689,6 @@ body {
   .top-layout {
     margin-bottom: 2mm;
   }
-  
 
   .today-note-section {
     margin-bottom: 0;
@@ -701,10 +721,6 @@ body {
     font-size: 2.8mm;
   }
 
-  .marker-tooltip {
-    display: none !important;
-  }
-
   .dust-circle {
     border: 0.35mm solid #000;
     print-color-adjust: exact;
@@ -717,6 +733,10 @@ body {
     width: 100%;
     min-height: auto;
     padding: 20px;
+  }
+  .sheet-toolbar {
+    width: 100%;
+    padding: 0 20px;
   }
   .top-layout {
     grid-template-columns: 1fr;
@@ -738,7 +758,7 @@ body {
     min-width: 760px;
   }
   .top-layout > .astro-card {
-  margin-top: 0;
+    margin-top: 0;
   }
   .dust-table {
     overflow-x: auto;
@@ -762,30 +782,17 @@ body {
   }
 
   .today-note-long {
-  min-height: 72px;
-  font-size: 13px;
-  padding: 10px 12px;
-}
+    min-height: 72px;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
   .dust-meta {
-  gap: 10px;
-  flex-wrap: wrap;
-}
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
   .forecast-grid {
     grid-template-columns: 1fr;
-  }
-
-  .map-marker {
-    min-width: 82px;
-    max-width: 112px;
-  }
-
-  .marker-weather {
-    font-size: 14px;
-  }
-
-  .marker-line {
-    font-size: 10px;
   }
 
   .astro-row {

@@ -1,0 +1,140 @@
+.layout-map {
+  min-height: 0;
+}
+
+.map-shell {
+  width: 100%;
+}
+
+.map-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1296 / 2013;
+  overflow: hidden;
+  background: #ececec;
+  border-radius: 2mm;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.map-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.map-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  min-width: 17.6mm;
+  max-width: 26mm;
+}
+
+.marker-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3mm;
+  padding: 0.9mm 1.2mm;
+  border-radius: 1.8mm;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111111;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.marker-weather {
+  font-size: 4.5mm;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.marker-line {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.8mm;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 3.3mm;
+  line-height: 1.1;
+}
+
+.marker-city {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.marker-temp {
+  color: #333333;
+  white-space: nowrap;
+}
+
+.marker-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 1.2mm);
+  transform: translateX(-50%);
+  min-width: 18mm;
+  padding: 1.2mm 1.6mm;
+  border-radius: 1.6mm;
+  background: rgba(17, 17, 17, 0.94);
+  color: #ffffff;
+  font-size: 2.8mm;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 1.2mm 3mm rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 20;
+}
+
+.marker-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.4mm;
+}
+
+.marker-tooltip-row + .marker-tooltip-row {
+  margin-top: 0.6mm;
+}
+
+.marker-tooltip-label {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+}
+
+.marker-tooltip-value {
+  font-weight: 700;
+}
+
+.map-marker:hover .marker-tooltip,
+.map-marker:focus-within .marker-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media print {
+  .marker-tooltip {
+    display: none !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .map-marker {
+    min-width: 82px;
+    max-width: 112px;
+  }
+
+  .marker-weather {
+    font-size: 14px;
+  }
+
+  .marker-line {
+    font-size: 10px;
+  }
+}
