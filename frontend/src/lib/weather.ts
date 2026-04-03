@@ -4,6 +4,9 @@ import {
   getTargetDate,
   latLonToGrid,
   summarizeDailyWeather,
+  summarizeLandForecast,
+  type City,
+  type LandFcstItem,
 } from "./kma";
 
 function kmaApiOrigin(): string {
@@ -13,7 +16,10 @@ function kmaApiOrigin(): string {
   return "https://apis.data.go.kr";
 }
 
-const BASE_URL = `${kmaApiOrigin()}/1360000/VilageFcstInfoService_2.0/getVilageFcst`;
+const BASE_URL =
+  `${kmaApiOrigin()}/1360000/VilageFcstInfoService_2.0/getVilageFcst`;
+const LAND_BASE_URL =
+  `${kmaApiOrigin()}/1360000/VilageFcstMsgService/getLandFcst`;
 const REQUEST_TIMEOUT_MS = 12000;
 const CONCURRENCY = 5;
 
@@ -90,23 +96,28 @@ async function fetchWithTimeout(url: string) {
   }
 }
 
-async function fetchCityForecast(
-  serviceKey: string,
-  cityName: string,
-  lat: number,
-  lon: number,
-) {
-  const normalizedKey = normalizeServiceKey(serviceKey);
-  const { baseDate, baseTime } = getBaseDateTime();
-  const { nx, ny } = latLonToGrid(lat, lon);
-  const url = buildRequestUrl({
-    serviceKey: normalizedKey,
-    baseDate,
-    baseTime,
-    nx,
-    ny,
+function buildLandRequestUrl({
+  serviceKey,
+  regId,
+}: {
+  serviceKey: string;
+  regId: string;
+}) {
+  const encodedServiceKey = isLikelyEncodedKey(serviceKey)
+    ? serviceKey
+    : encodeURIComponent(serviceKey);
+
+  const params = new URLSearchParams({
+    pageNo: "1",
+    numOfRows: "100",
+    dataType: "JSON",
+    regId,
   });
 
+  return `${LAND_BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`;
+}
+
+async function fetchJsonWithValidation(url: string, cityName: string) {
   const res = await fetchWithTimeout(url);
 
   if (!res.ok) {
@@ -126,25 +137,124 @@ async function fetchCityForecast(
     );
   }
 
+  return json;
+}
+
+async function fetchVillageForecast(serviceKey: string, city: City) {
+  const normalizedKey = normalizeServiceKey(serviceKey);
+  const { baseDate, baseTime } = getBaseDateTime();
+  const { nx, ny } = latLonToGrid(city.lat, city.lon);
+
+  const url = buildRequestUrl({
+    serviceKey: normalizedKey,
+    baseDate,
+    baseTime,
+    nx,
+    ny,
+  });
+
+  const json = await fetchJsonWithValidation(url, city.name);
   const items = json?.response?.body?.items?.item ?? [];
 
   if (!Array.isArray(items) || items.length === 0) {
-    throw new Error(`${cityName} 예보 데이터가 비어 있습니다.`);
+    throw new Error(`${city.name} 예보 데이터가 비어 있습니다.`);
+  }
+
+  return items;
+}
+
+async function fetchLandForecast(
+  serviceKey: string,
+  city: City,
+): Promise<LandFcstItem[]> {
+  const normalizedKey = normalizeServiceKey(serviceKey);
+
+  const url = buildLandRequestUrl({
+    serviceKey: normalizedKey,
+    regId: city.regId,
+  });
+
+  const json = await fetchJsonWithValidation(url, city.name);
+  const items = json?.response?.body?.items?.item ?? [];
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error(`${city.name} 통보문 데이터가 비어 있습니다.`);
+  }
+
+  return items;
+}
+
+async function fetchCityForecast(
+  serviceKey: string,
+  city: City,
+) {
+  const [villageResult, landResult] = await Promise.allSettled([
+    fetchVillageForecast(serviceKey, city),
+    fetchLandForecast(serviceKey, city),
+  ]);
+
+  if (villageResult.status !== "fulfilled") {
+    throw villageResult.reason;
   }
 
   const tomorrowDate = getTargetDate(1);
   const dayAfterTomorrowDate = getTargetDate(2);
   const threeDaysLaterDate = getTargetDate(3);
 
+  const villageTomorrow = summarizeDailyWeather(
+    villageResult.value,
+    tomorrowDate,
+  );
+  const villageDay2 = summarizeDailyWeather(
+    villageResult.value,
+    dayAfterTomorrowDate,
+  );
+  const villageDay3 = summarizeDailyWeather(
+    villageResult.value,
+    threeDaysLaterDate,
+  );
+
+  const land =
+    landResult.status === "fulfilled"
+      ? summarizeLandForecast(landResult.value)
+      : { announceTime: null };
+
   return {
-    city: cityName,
-    lat,
-    lon,
-    tomorrow: summarizeDailyWeather(items, tomorrowDate),
-    dayAfterTomorrow: summarizeDailyWeather(items, dayAfterTomorrowDate),
-    threeDaysLater: summarizeDailyWeather(items, threeDaysLaterDate),
+    city: city.name,
+    lat: city.lat,
+    lon: city.lon,
+    tomorrow: {
+      ...villageTomorrow,
+      // 툴팁 오전/오후 날씨는 통보문 우선
+      amSky: land.tomorrowAm?.wf ?? villageTomorrow.amSky,
+      pmSky: land.tomorrowPm?.wf ?? villageTomorrow.pmSky,
+      // D+1 오전/오후 강수확률도 통보문 우선
+      amPop: land.tomorrowAm?.rnSt ?? villageTomorrow.amPop,
+      pmPop: land.tomorrowPm?.rnSt ?? villageTomorrow.pmPop,
+      // 지도 대표 날씨는 기존 합성 유지
+      sky: villageTomorrow.sky,
+    },
+    dayAfterTomorrow: {
+      ...villageDay2,
+      amSky: land.day2Am?.wf ?? villageDay2.amSky,
+      pmSky: land.day2Pm?.wf ?? villageDay2.pmSky,
+      sky: villageDay2.sky,
+    },
+    threeDaysLater: {
+      ...villageDay3,
+      amSky: land.day3Am?.wf ?? villageDay3.amSky,
+      pmSky: land.day3Pm?.wf ?? villageDay3.pmSky,
+      sky: villageDay3.sky,
+    },
+    landWarning:
+      landResult.status === "rejected"
+        ? (landResult.reason instanceof Error
+            ? landResult.reason.message
+            : "통보문 조회 실패")
+        : null,
   };
 }
+
 
 async function runInBatches<T, R>(
   items: T[],
@@ -164,7 +274,7 @@ async function runInBatches<T, R>(
 
 export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResult> {
   const settled = await runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
-    fetchCityForecast(kmaServiceKey, city.name, city.lat, city.lon),
+    fetchCityForecast(kmaServiceKey, city),
   );
 
   const data = settled.flatMap((r) =>
