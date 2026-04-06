@@ -488,7 +488,7 @@ function renderPage(
               <span><span class="dust-circle dust-normal"></span> 보통</span>
               <span><span class="dust-circle dust-bad"></span> 나쁨</span>
               <span><span class="dust-circle dust-very-bad"></span> 매우 나쁨</span>
-              <span><span class="dust-circle dust-unknown"></span> unknown</span>
+              <span><span class="dust-circle dust-unknown"></span> 데이터 오류</span>
             </div>
           </section>
         </div>

@@ -737,11 +737,14 @@ body {
 }
 
 .dust-circle {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 3.2mm;
   height: 3.2mm;
   border-radius: 50%;
   border: 0.35mm solid currentColor;
+  line-height: 0;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
