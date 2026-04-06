@@ -47,6 +47,15 @@ type WeatherWarning = {
 
 type DailyWeatherSummary = ReturnType<typeof summarizeDailyWeather>;
 
+type CityForecastResult = {
+  city: string;
+  lat: number;
+  lon: number;
+  tomorrow: DailyWeatherSummary;
+  dayAfterTomorrow: DailyWeatherSummary;
+  threeDaysLater: DailyWeatherSummary;
+};
+
 export type WeatherResult = {
   base: { baseDate: string; baseTime: string };
   updatedAt: string;
@@ -291,12 +300,6 @@ async function fetchCityForecast(
         ) ?? villageDay3.sky,
     },
 
-    warning:
-      landResult.status === "rejected"
-        ? (landResult.reason instanceof Error
-            ? landResult.reason.message
-            : "통보문 조회 실패")
-        : null,
   };
 }
 
