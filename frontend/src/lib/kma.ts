@@ -18,17 +18,23 @@ export type ForecastItem = {
 };
 
 export type LandFcstItem = {
+  announceTime?: string | number;
   numEf: string | number;
-  announceTime?: string;
-  wf?: string;
+  regId?: string;
   rnSt?: string | number;
+  rnYn?: string | number;
   ta?: string | number;
+  wf?: string;
+  wfCd?: string;
 };
 
 export type LandSlotValue = {
   wf: string | null;
+  wfCd: string | null;
+  rnYn: number | null;
   rnSt: number | null;
   ta: number | null;
+  label: WeatherLabel | null;
 };
 
 export type LandSummary = {
@@ -166,6 +172,106 @@ export function ptyCodeToText(
   return null;
 }
 
+function wfCdToWeatherLabel(
+  value: string | null | undefined,
+): WeatherLabel | null {
+  const code = String(value ?? "").trim();
+
+  if (code === "DB01") return "맑음";
+  if (code === "DB02") return "구름조금";
+  if (code === "DB03") return "구름많음";
+  if (code === "DB04") return "흐림";
+
+  return null;
+}
+
+function rnYnToWeatherLabel(
+  value: string | number | null | undefined,
+): WeatherLabel | null {
+  const code = Number(value);
+
+  if (!Number.isFinite(code) || code === 0) return null;
+  if (code === 1) return "비";
+  if (code === 2) return "비나눈";
+  if (code === 3) return "눈";
+  if (code === 4) return "비"; // 소나기 -> 비 취급
+
+  return null;
+}
+
+export function landSlotToWeatherLabel(slot: {
+  rnYn?: string | number | null;
+  wfCd?: string | null;
+}): WeatherLabel | null {
+  return rnYnToWeatherLabel(slot.rnYn) ?? wfCdToWeatherLabel(slot.wfCd);
+}
+
+function isPrecipGroup(label: WeatherLabel | null): boolean {
+  return label === "비" || label === "비나눈" || label === "눈";
+}
+
+function isLightSkyGroup(label: WeatherLabel | null): boolean {
+  return label === "맑음" || label === "구름조금";
+}
+
+function isCloudyGroup(label: WeatherLabel | null): boolean {
+  return label === "구름많음" || label === "흐림";
+}
+
+function isCloudGroupForAfterRain(label: WeatherLabel | null): boolean {
+  return label === "구름조금" || label === "구름많음";
+}
+
+export function mergeLandMorningAfternoonWeather(
+  morning: WeatherLabel | null,
+  afternoon: WeatherLabel | null,
+): WeatherLabel | null {
+  if (!morning && !afternoon) return null;
+  if (morning && !afternoon) return morning;
+  if (!morning && afternoon) return afternoon;
+
+  if (morning === afternoon) return morning;
+
+  if (
+    (morning === "맑음" && afternoon === "구름조금") ||
+    (morning === "구름조금" && afternoon === "맑음")
+  ) {
+    return "구름조금";
+  }
+
+  if (isPrecipGroup(morning) && isPrecipGroup(afternoon)) {
+    return "비나눈";
+  }
+
+  if (isLightSkyGroup(morning) && isCloudyGroup(afternoon)) {
+    return "차차흐림";
+  }
+
+  if (isCloudyGroup(morning) && isLightSkyGroup(afternoon)) {
+    return "흐린후갬";
+  }
+
+  if (
+    (isLightSkyGroup(morning) || isCloudyGroup(morning)) &&
+    isPrecipGroup(afternoon)
+  ) {
+    return "흐린후비";
+  }
+
+  if (
+    isPrecipGroup(morning) &&
+    (afternoon === "맑음" || isCloudGroupForAfterRain(afternoon))
+  ) {
+    return "비후갬";
+  }
+
+  if (isCloudyGroup(morning) && isCloudyGroup(afternoon)) {
+    return "흐림";
+  }
+
+  return afternoon ?? morning;
+}
+
 function pickClosestByTime<T extends ForecastItem>(items: T[], targetTime: number) {
   return [...items].sort((a, b) => {
     const diffA = Math.abs(Number(a.fcstTime) - targetTime);
@@ -251,11 +357,24 @@ export function summarizeLandForecast(items: LandFcstItem[]): LandSummary {
     if (!slot) continue;
 
     summary[slot] = {
-      wf: item.wf ?? null,
-      rnSt:
-        item.rnSt == null || item.rnSt === "" ? null : Number(item.rnSt),
-      ta:
-        item.ta == null || item.ta === "" ? null : Number(item.ta),
+    wf: item.wf ?? null,
+    wfCd: item.wfCd ?? null,
+    rnYn:
+      item.rnYn == null || item.rnYn === ""
+      ? null
+      : Number(item.rnYn),
+    rnSt:
+      item.rnSt == null || item.rnSt === ""
+      ? null
+      : Number(item.rnSt),
+    ta:
+      item.ta == null || item.ta === ""
+      ? null
+      : Number(item.ta),
+    label: landSlotToWeatherLabel({
+      rnYn: item.rnYn,
+      wfCd: item.wfCd ?? null,
+      }),
     };
   }
 

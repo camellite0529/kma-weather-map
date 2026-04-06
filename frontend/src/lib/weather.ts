@@ -5,9 +5,26 @@ import {
   latLonToGrid,
   summarizeDailyWeather,
   summarizeLandForecast,
+  mergeLandMorningAfternoonWeather,
   type City,
   type LandFcstItem,
 } from "./kma";
+
+function toWeatherLabelLike(value: string | null) {
+  return value as
+    | "맑음"
+    | "구름조금"
+    | "구름많음"
+    | "흐림"
+    | "차차흐림"
+    | "흐린후갬"
+    | "비"
+    | "흐린후비"
+    | "비후갬"
+    | "눈"
+    | "비나눈"
+    | null;
+}
 
 function kmaApiOrigin(): string {
   if (import.meta.env.DEV) {
@@ -187,10 +204,12 @@ async function fetchLandForecast(
 async function fetchCityForecast(
   serviceKey: string,
   city: City,
-) {
+): Promise<CityForecastResult> {
+  const normalizedKey = normalizeServiceKey(serviceKey);
+
   const [villageResult, landResult] = await Promise.allSettled([
-    fetchVillageForecast(serviceKey, city),
-    fetchLandForecast(serviceKey, city),
+    fetchVillageForecast(normalizedKey, city),
+    fetchLandForecast(normalizedKey, city),
   ]);
 
   if (villageResult.status !== "fulfilled") {
@@ -219,34 +238,57 @@ async function fetchCityForecast(
       ? summarizeLandForecast(landResult.value)
       : { announceTime: null };
 
+  const tomorrowAmLabel = land.tomorrowAm?.label ?? villageTomorrow.amSky;
+  const tomorrowPmLabel = land.tomorrowPm?.label ?? villageTomorrow.pmSky;
+  const day2AmLabel = land.day2Am?.label ?? villageDay2.amSky;
+  const day2PmLabel = land.day2Pm?.label ?? villageDay2.pmSky;
+  const day3AmLabel = land.day3Am?.label ?? villageDay3.amSky;
+  const day3PmLabel = land.day3Pm?.label ?? villageDay3.pmSky;
+
   return {
     city: city.name,
     lat: city.lat,
     lon: city.lon,
+
     tomorrow: {
       ...villageTomorrow,
-      // 툴팁 오전/오후 날씨는 통보문 우선
-      amSky: land.tomorrowAm?.wf ?? villageTomorrow.amSky,
-      pmSky: land.tomorrowPm?.wf ?? villageTomorrow.pmSky,
-      // D+1 오전/오후 강수확률도 통보문 우선
+      // 오전/오후 날씨: 통보문 rnYn 우선, wfCd 보조
+      amSky: tomorrowAmLabel,
+      pmSky: tomorrowPmLabel,
+      // 오전/오후 강수확률: 통보문 rnSt
       amPop: land.tomorrowAm?.rnSt ?? villageTomorrow.amPop,
       pmPop: land.tomorrowPm?.rnSt ?? villageTomorrow.pmPop,
-      // 지도 대표 날씨는 기존 합성 유지
-      sky: villageTomorrow.sky,
+      // 대표 날씨: 위 오전/오후 라벨을 규칙대로 합성
+      sky:
+      mergeLandMorningAfternoonWeather(
+      toWeatherLabelLike(tomorrowAmLabel),
+      toWeatherLabelLike(tomorrowPmLabel),
+      ) ?? villageTomorrow.sky,
     },
+
     dayAfterTomorrow: {
       ...villageDay2,
-      amSky: land.day2Am?.wf ?? villageDay2.amSky,
-      pmSky: land.day2Pm?.wf ?? villageDay2.pmSky,
-      sky: villageDay2.sky,
+      amSky: day2AmLabel,
+      pmSky: day2PmLabel,
+      sky:
+        mergeLandMorningAfternoonWeather(
+          toWeatherLabelLike(day2AmLabel),
+          toWeatherLabelLike(day2PmLabel),
+        ) ?? villageDay2.sky,
     },
+
     threeDaysLater: {
       ...villageDay3,
-      amSky: land.day3Am?.wf ?? villageDay3.amSky,
-      pmSky: land.day3Pm?.wf ?? villageDay3.pmSky,
-      sky: villageDay3.sky,
+      amSky: day3AmLabel,
+      pmSky: day3PmLabel,
+      sky:
+        mergeLandMorningAfternoonWeather(
+          toWeatherLabelLike(day3AmLabel),
+          toWeatherLabelLike(day3PmLabel),
+        ) ?? villageDay3.sky,
     },
-    landWarning:
+
+    warning:
       landResult.status === "rejected"
         ? (landResult.reason instanceof Error
             ? landResult.reason.message
