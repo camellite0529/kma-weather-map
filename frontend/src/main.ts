@@ -425,6 +425,7 @@ function renderPage(
             >${escapeHtml(noteBody)}</textarea>
           </section>
           <div class="astro-side">
+            <div class="notice-button-row">
             <a
               class="notice-link-btn"
               href="https://www.weather.go.kr/w/forecast/notice.do"
@@ -433,6 +434,15 @@ function renderPage(
             >
               통보문
             </a>
+            <a
+              class="notice-link-btn"
+              href="https://www.airkorea.or.kr/web/dustForecast?pMENU_NO=113"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              미세먼지
+            </a>
+          </div>
             ${renderAstroCard(astro)}
           </div>
         </div>
