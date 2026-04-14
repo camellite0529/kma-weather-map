@@ -10,7 +10,7 @@ import {
   type DailyWeather,
 } from "./lib/kma";
 import { getWeatherData, type WeatherResult } from "./lib/weather";
-import { getAstroTimes, type AstroTimes } from "./lib/astro";
+import { getAstroTimes, type AstroResult } from "./lib/astro";
 import {
   createEmptyDustData,
   getDustData,
@@ -140,13 +140,20 @@ function displayPercent(value: number | null) {
 }
 
 function dustClassName(grade: DustLevel) {
-  if (grade === "좋음") return "dust-circle dust-good";
-  if (grade === "보통") return "dust-circle dust-normal";
-  if (grade === "나쁨") return "dust-circle dust-bad";
-  if (grade === "unknown") return "dust-circle dust-unknown";
-  return "dust-circle dust-very-bad";
+  if (grade === "unknown") return "dust-grade dust-unknown";
+  if (grade.endsWith("\ub098\uc068")) {
+    if (grade.startsWith("\ub9e4\uc6b0")) return "dust-grade dust-very-bad";
+    return "dust-grade dust-bad";
+  }
+  if (grade === "\ubcf4\ud1b5") return "dust-grade dust-normal";
+  return "dust-grade dust-good";
 }
 
+
+function dustLabel(grade: DustLevel) {
+  if (grade === "unknown") return "\ub370\uc774\ud130 \uc624\ub958";
+  return grade;
+}
 function renderDustDetailTooltip(details: DustRegionDetailItem[] | undefined) {
   if (!details?.length) return "";
 
@@ -180,11 +187,17 @@ function emptyDaily(): DailyWeather {
   };
 }
 
-const EMPTY_ASTRO: AstroTimes = {
+const EMPTY_ASTRO: AstroResult = {
   sunrise: null,
   sunset: null,
   moonrise: null,
   moonset: null,
+  fieldHighlights: {
+    sunrise: false,
+    sunset: false,
+    moonrise: false,
+    moonset: false,
+  },
 };
 
 function createEmptyWeatherResult(): WeatherResult {
@@ -216,22 +229,27 @@ function formatKstFilenameTimestamp() {
   return `${pick("year")}${pick("month")}${pick("day")}-${pick("hour")}${pick("minute")}`;
 }
 
-function renderAstroCard(astro: AstroTimes) {
+function astroTimeClass(changed: boolean) {
+  return changed ? "astro-time astro-value-changed" : "astro-time";
+}
+
+function renderAstroCard(astro: AstroResult) {
+  const h = astro.fieldHighlights;
   return `
     <section class="card astro-card">
       <div class="astro-row">
         <span class="astro-icon astro-icon-sun">☀</span>
         <span class="astro-label">해뜸</span>
-        <span class="astro-time">${escapeHtml(astro.sunrise ?? "-")}</span>
+        <span class="${astroTimeClass(h.sunrise)}">${escapeHtml(astro.sunrise ?? "-")}</span>
         <span class="astro-label astro-label-right">해짐</span>
-        <span class="astro-time">${escapeHtml(astro.sunset ?? "-")}</span>
+        <span class="${astroTimeClass(h.sunset)}">${escapeHtml(astro.sunset ?? "-")}</span>
       </div>
       <div class="astro-row">
         <span class="astro-icon astro-icon-moon">☾</span>
         <span class="astro-label">달뜸</span>
-        <span class="astro-time">${escapeHtml(astro.moonrise ?? "-")}</span>
+        <span class="${astroTimeClass(h.moonrise)}">${escapeHtml(astro.moonrise ?? "-")}</span>
         <span class="astro-label astro-label-right">달짐</span>
-        <span class="astro-time">${escapeHtml(astro.moonset ?? "-")}</span>
+        <span class="${astroTimeClass(h.moonset)}">${escapeHtml(astro.moonset ?? "-")}</span>
       </div>
     </section>
   `;
@@ -254,13 +272,22 @@ function renderPrecipChart(rows: CityWeather[]) {
       const strongDivider = PRECIP_STRONG_DIVIDER_BEFORE_CITY.has(row.city)
         ? " precip-row-strong"
         : "";
+      const ph = row.landPublishHighlights;
+      const amCls =
+        ph?.tomorrowAmPop === true
+          ? "precip-value precip-value-am precip-value-changed"
+          : "precip-value precip-value-am";
+      const pmCls =
+        ph?.tomorrowPmPop === true
+          ? "precip-value precip-value-pm precip-value-changed"
+          : "precip-value precip-value-pm";
       return `
         <div class="precip-row-item${strongDivider}">
           <div class="precip-label">${escapeHtml(row.city)}</div>
           <div class="precip-track">${amBar}${pmBar}</div>
           <div class="precip-values">
-            <span class="precip-value precip-value-am">${amPercent}%</span>
-            <span class="precip-value precip-value-pm">${pmPercent}%</span>
+            <span class="${amCls}">${amPercent}%</span>
+            <span class="${pmCls}">${pmPercent}%</span>
           </div>
         </div>
       `;
@@ -295,15 +322,19 @@ function renderCompactDayTable(
   rows: CityWeather[],
   kind: "dayAfterTomorrow" | "threeDaysLater",
 ) {
+  const changedKey =
+    kind === "dayAfterTomorrow" ? "dayAfterTomorrow" : "threeDaysLater";
   const body = rows
-    .map(
-      (row) => `
+    .map((row) => {
+      const ch = row.landPublishHighlights?.[changedKey] === true;
+      const cellCls = ch ? "forecast-cell-changed" : "";
+      return `
     <tr>
       <th scope="row">${escapeHtml(row.city)}</th>
-      <td>${escapeHtml(row[kind].sky ?? "-")}</td>
-      <td>${tempText(row[kind].minTemp)} / ${tempText(row[kind].maxTemp)}</td>
-    </tr>`,
-    )
+      <td${cellCls ? ` class="${cellCls}"` : ""}>${escapeHtml(row[kind].sky ?? "-")}</td>
+      <td${cellCls ? ` class="${cellCls}"` : ""}>${tempText(row[kind].minTemp)} / ${tempText(row[kind].maxTemp)}</td>
+    </tr>`;
+    })
     .join("");
   return `
     <div class="forecast-table">
@@ -317,7 +348,7 @@ function renderCompactDayTable(
 
 function renderPage(
   weather: WeatherResult,
-  astro: AstroTimes,
+  astro: AstroResult,
   dust: DustData,
   loadToolbarState: DataLoadToolbarState = "complete",
 ) {
@@ -346,9 +377,13 @@ function renderPage(
   const markersHtml = weather.data
     .map((item) => {
       const pos = getMarkerPosition(item.city);
+      const markerCh =
+        item.landPublishHighlights?.tomorrowVisual === true
+          ? " marker-card--publish-changed"
+          : "";
       return `
       <div class="map-marker" style="left: ${pos.left}; top: ${pos.top}">
-        <div class="marker-card">
+        <div class="marker-card${markerCh}">
           <div class="marker-weather">${escapeHtml(item.tomorrow.sky ?? "-")}</div>
           <div class="marker-line">
             <strong class="marker-city">${escapeHtml(item.city)}</strong>
@@ -379,17 +414,19 @@ function renderPage(
     .join("");
 
   const dustPm10 = dust.regions
-    .map(
-      (item) =>
-        `<div class="dust-cell${item.details?.length ? " dust-detail" : ""}"${item.details?.length ? ' tabindex="0"' : ""}><span class="${dustClassName(item.pm10)}"></span>${renderDustDetailTooltip(item.details)}</div>`,
-    )
+    .map((item, idx) => {
+      const vh = dust.valueHighlights?.[idx];
+      const spanExtra = vh?.pm10 === true ? " dust-grade-bg-changed" : "";
+      return `<div class="dust-cell${item.details?.length ? " dust-detail" : ""}"${item.details?.length ? ' tabindex="0"' : ""}><span class="${dustClassName(item.pm10)}${spanExtra}">${escapeHtml(dustLabel(item.pm10))}</span>${renderDustDetailTooltip(item.details)}</div>`;
+    })
     .join("");
 
   const dustPm25 = dust.regions
-    .map(
-      (item) =>
-        `<div class="dust-cell${item.details?.length ? " dust-detail" : ""}"${item.details?.length ? ' tabindex="0"' : ""}><span class="${dustClassName(item.pm25)}"></span>${renderDustDetailTooltip(item.details)}</div>`,
-    )
+    .map((item, idx) => {
+      const vh = dust.valueHighlights?.[idx];
+      const spanExtra = vh?.pm25 === true ? " dust-grade-bg-changed" : "";
+      return `<div class="dust-cell${item.details?.length ? " dust-detail" : ""}"${item.details?.length ? ' tabindex="0"' : ""}><span class="${dustClassName(item.pm25)}${spanExtra}">${escapeHtml(dustLabel(item.pm25))}</span>${renderDustDetailTooltip(item.details)}</div>`;
+    })
     .join("");
 
   const updated =
@@ -526,13 +563,6 @@ function renderPage(
                 <div class="dust-row-label">초미세먼지</div>
                 ${dustPm25}
               </div>
-            </div>
-            <div class="dust-legend">
-              <span><span class="dust-circle dust-good"></span> 좋음</span>
-              <span><span class="dust-circle dust-normal"></span> 보통</span>
-              <span><span class="dust-circle dust-bad"></span> 나쁨</span>
-              <span><span class="dust-circle dust-very-bad"></span> 매우 나쁨</span>
-              <span><span class="dust-circle dust-unknown"></span> 데이터 오류</span>
             </div>
           </section>
         </div>

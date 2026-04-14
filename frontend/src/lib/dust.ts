@@ -12,10 +12,17 @@ export type DustRegionItem = {
   details?: DustRegionDetailItem[];
 };
 
+export type DustRegionValueHighlight = {
+  pm10: boolean;
+  pm25: boolean;
+};
+
 export type DustData = {
   dataTime: string | null;
   announcedAt: string | null;
   regions: DustRegionItem[];
+  /** 직전 발표 대비 등급 문구가 달라진 열(행×등급종류) */
+  valueHighlights?: DustRegionValueHighlight[];
 };
 
 export type DustRegionDetailItem = {
@@ -193,11 +200,43 @@ function normalizeAnnouncedAt(value?: string) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
-async function fetchForecast(
+function forecastItemSortKey(item: DustForecastItem): number {
+  const raw = String(item.dataTime ?? item.informData ?? "");
+  const digits = raw.replace(/\D/g, "");
+  return digits.length >= 8 ? Number(digits) : 0;
+}
+
+function forecastsForDateSortedDesc(
+  items: DustForecastItem[],
+  targetDate: string,
+): DustForecastItem[] {
+  return items
+    .filter((item) => extractForecastDate(item) === targetDate)
+    .sort((a, b) => forecastItemSortKey(b) - forecastItemSortKey(a));
+}
+
+function pickTwoLatestDistinctByTime(
+  sortedDesc: DustForecastItem[],
+): [DustForecastItem, DustForecastItem] | null {
+  if (sortedDesc.length < 2) return null;
+  const latest = sortedDesc[0]!;
+  const latestKey = forecastItemSortKey(latest);
+  const previous =
+    sortedDesc.find((item) => forecastItemSortKey(item) < latestKey) ?? null;
+  if (!previous) return null;
+  return [latest, previous];
+}
+
+function extractPublishHour(item: DustForecastItem): number | null {
+  const digits = String(item.dataTime ?? item.informData ?? "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  return Number(digits.slice(8, 10));
+}
+
+async function fetchForecastItems(
   serviceKey: string,
   informCode: "PM10" | "PM25",
-  targetDate: string,
-) {
+): Promise<DustForecastItem[]> {
   const normalizedKey = normalizeServiceKey(serviceKey);
 
   const params = new URLSearchParams({
@@ -228,22 +267,91 @@ async function fetchForecast(
     throw new Error(`${informCode} 예보 데이터가 비어 있습니다.`);
   }
 
-  const matched = items.find((item) => extractForecastDate(item) === targetDate);
+  return items;
+}
+
+async function fetchForecast(
+  serviceKey: string,
+  informCode: "PM10" | "PM25",
+  targetDate: string,
+) {
+  const items = await fetchForecastItems(serviceKey, informCode);
+  const sorted = forecastsForDateSortedDesc(items, targetDate);
+  const matched = sorted[0];
 
   if (!matched) {
     throw new Error(`${informCode} 예보에서 ${targetDate} 데이터를 찾지 못했습니다.`);
   }
 
-  return matched;
+  return { matched, sortedForDate: sorted };
+}
+
+function buildRegionValueHighlights(
+  pm10Sorted: DustForecastItem[],
+  pm25Sorted: DustForecastItem[],
+): DustRegionValueHighlight[] | undefined {
+  const pm10Pair = pickTwoLatestDistinctByTime(pm10Sorted);
+  const pm25Pair = pickTwoLatestDistinctByTime(pm25Sorted);
+  if (!pm10Pair || !pm25Pair) return undefined;
+  const pm10LatestHour = extractPublishHour(pm10Pair[0]);
+  const pm25LatestHour = extractPublishHour(pm25Pair[0]);
+  if (pm10LatestHour !== 17 || pm25LatestHour !== 17) return undefined;
+
+  const pm10LatestMap = parseRegionGrades(pm10Pair[0].informGrade ?? "");
+  const pm10PrevMap = parseRegionGrades(pm10Pair[1].informGrade ?? "");
+  const pm25LatestMap = parseRegionGrades(pm25Pair[0].informGrade ?? "");
+  const pm25PrevMap = parseRegionGrades(pm25Pair[1].informGrade ?? "");
+
+  return REGION_GROUPS.map((group) => {
+    const latestDetails = createRegionDetails(
+      group,
+      pm10LatestMap,
+      pm25LatestMap,
+    );
+    const prevDetails = createRegionDetails(group, pm10PrevMap, pm25PrevMap);
+
+    const pm10Latest = summarizeRegionGrade(
+      group,
+      pm10LatestMap,
+      latestDetails,
+      "pm10",
+    );
+    const pm10Prev = summarizeRegionGrade(
+      group,
+      pm10PrevMap,
+      prevDetails,
+      "pm10",
+    );
+    const pm25Latest = summarizeRegionGrade(
+      group,
+      pm25LatestMap,
+      latestDetails,
+      "pm25",
+    );
+    const pm25Prev = summarizeRegionGrade(
+      group,
+      pm25PrevMap,
+      prevDetails,
+      "pm25",
+    );
+
+    return {
+      pm10: pm10Prev !== pm10Latest,
+      pm25: pm25Prev !== pm25Latest,
+    };
+  });
 }
 
 export async function getDustData(airkoreaServiceKey: string): Promise<DustData> {
   const targetDate = formatDashedDate(getTargetDate(1));
 
-  const [pm10Data, pm25Data] = await Promise.all([
+  const [pm10Result, pm25Result] = await Promise.all([
     fetchForecast(airkoreaServiceKey, "PM10", targetDate),
     fetchForecast(airkoreaServiceKey, "PM25", targetDate),
   ]);
+
+  const pm10Data = pm10Result.matched;
+  const pm25Data = pm25Result.matched;
 
   const pm10GradeText = pm10Data.informGrade ?? "";
   const pm25GradeText = pm25Data.informGrade ?? "";
@@ -262,10 +370,16 @@ export async function getDustData(airkoreaServiceKey: string): Promise<DustData>
     };
   });
 
+  const valueHighlights = buildRegionValueHighlights(
+    pm10Result.sortedForDate,
+    pm25Result.sortedForDate,
+  );
+
   return {
     dataTime: targetDate,
     announcedAt: normalizeAnnouncedAt(announcedAtRaw ?? undefined),
     regions,
+    valueHighlights,
   };
 }
 

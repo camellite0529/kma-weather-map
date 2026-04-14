@@ -50,11 +50,24 @@ export type DailyWeather = {
   pmPop: number | null;
 };
 
+/** 직전 발표 대비 변경 여부(동일 regId·numEf 페이로드 비교, 최신 발표 시각 기준 슬롯 매핑). */
+export type LandPublishHighlight = {
+  /** 지도 카드(내일 날씨·기온·툴팁) */
+  tomorrowVisual: boolean;
+  /** 강수확률(%) 오전 막대 */
+  tomorrowAmPop: boolean;
+  /** 강수확률(%) 오후 막대 */
+  tomorrowPmPop: boolean;
+  dayAfterTomorrow: boolean;
+  threeDaysLater: boolean;
+};
+
 export type CityWeather = {
   city: string;
   tomorrow: DailyWeather;
   dayAfterTomorrow: DailyWeather;
   threeDaysLater: DailyWeather;
+  landPublishHighlights?: LandPublishHighlight;
 };
 
 export type MarkerPosition = {
@@ -412,6 +425,149 @@ export function summarizeLandForecast(items: LandFcstItem[]): LandSummary {
   return summary;
 }
 
+function serializeLandFcstComparePayload(item: LandFcstItem): string {
+  const wf = item.wf ?? "";
+  const wfCd = item.wfCd ?? "";
+  const ta = item.ta ?? "";
+  const rnSt = item.rnSt ?? "";
+  const rnYn = item.rnYn ?? "";
+  return `${wf}|${wfCd}|${ta}|${rnSt}|${rnYn}`;
+}
+
+/** 육상 통보문 비교 키 (regId + numEf). */
+export function landFcstCompareKey(
+  regId: string,
+  numEf: string | number,
+): string {
+  return `${regId}_${String(numEf)}`;
+}
+
+export function getTwoLatestAnnounceTimesFromItems(
+  items: LandFcstItem[],
+): { previous: string; latest: string } | null {
+  const times = new Set(
+    items
+      .map((i) => String(i.announceTime ?? "").trim())
+      .filter((s) => s.length > 0),
+  );
+  const sorted = [...times].sort(
+    (a, b) =>
+      Number(String(a).replace(/\D/g, "")) -
+      Number(String(b).replace(/\D/g, "")),
+  );
+  if (sorted.length < 2) return null;
+  return {
+    previous: sorted[sorted.length - 2]!,
+    latest: sorted[sorted.length - 1]!,
+  };
+}
+
+function buildLandCompareMap(
+  items: LandFcstItem[],
+  regIdFallback: string,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const item of items) {
+    const reg = String(item.regId ?? regIdFallback).trim() || regIdFallback;
+    const key = landFcstCompareKey(reg, item.numEf);
+    map.set(key, serializeLandFcstComparePayload(item));
+  }
+  return map;
+}
+
+function collectNumEfsForSlots(
+  announceTime: string,
+  slots: ReadonlyArray<keyof Omit<LandSummary, "announceTime">>,
+): Set<number> {
+  const slotSet = new Set(slots);
+  const out = new Set<number>();
+  for (let numEf = 0; numEf <= 12; numEf++) {
+    const slot = resolveLandSlot(announceTime, numEf);
+    if (slot && slotSet.has(slot)) out.add(numEf);
+  }
+  return out;
+}
+
+/**
+ * 최신·직전 발표시각 각각의 항목을 regId+numEf로 맞춘 뒤 페이로드가 달라졌는지 검사하고,
+ * 최신 발표 시각 기준으로 내일/모레/글피 슬롯에 매핑되는 numEf만 UI 플래그로 반환합니다.
+ */
+export function computeLandPublishHighlights(
+  items: LandFcstItem[],
+  regId: string,
+): LandPublishHighlight | null {
+  const pair = getTwoLatestAnnounceTimesFromItems(items);
+  if (!pair) return null;
+  const latestHour = getAnnounceHour(pair.latest);
+  if (latestHour !== 17) return null;
+
+  const prevItems = items.filter(
+    (i) => String(i.announceTime ?? "") === String(pair.previous),
+  );
+  const latestItems = items.filter(
+    (i) => String(i.announceTime ?? "") === String(pair.latest),
+  );
+  const prevMap = buildLandCompareMap(prevItems, regId);
+  const latestMap = buildLandCompareMap(latestItems, regId);
+
+  const reg =
+    String(latestItems[0]?.regId ?? prevItems[0]?.regId ?? regId).trim() ||
+    regId;
+
+  const keyDiffers = (numEf: number): boolean => {
+    const k = landFcstCompareKey(reg, numEf);
+    return prevMap.get(k) !== latestMap.get(k);
+  };
+
+  const latestAT = pair.latest;
+  const tomorrowEfs = collectNumEfsForSlots(latestAT, [
+    "tomorrowAm",
+    "tomorrowPm",
+  ]);
+  const day2Efs = collectNumEfsForSlots(latestAT, ["day2Am", "day2Pm"]);
+  const day3Efs = collectNumEfsForSlots(latestAT, ["day3Am", "day3Pm"]);
+
+  let tomorrowAmPop = false;
+  let tomorrowPmPop = false;
+  let tomorrowVisual = false;
+
+  for (const n of tomorrowEfs) {
+    if (!keyDiffers(n)) continue;
+    const slot = resolveLandSlot(latestAT, n);
+    if (slot === "tomorrowAm") {
+      tomorrowAmPop = true;
+      tomorrowVisual = true;
+    }
+    if (slot === "tomorrowPm") {
+      tomorrowPmPop = true;
+      tomorrowVisual = true;
+    }
+  }
+
+  let dayAfterTomorrow = false;
+  for (const n of day2Efs) {
+    if (keyDiffers(n)) {
+      dayAfterTomorrow = true;
+      break;
+    }
+  }
+
+  let threeDaysLater = false;
+  for (const n of day3Efs) {
+    if (keyDiffers(n)) {
+      threeDaysLater = true;
+      break;
+    }
+  }
+
+  return {
+    tomorrowVisual,
+    tomorrowAmPop,
+    tomorrowPmPop,
+    dayAfterTomorrow,
+    threeDaysLater,
+  };
+}
 
 export function getMarkerPosition(city: string) {
   const fallback = { x: 50, y: 50 };

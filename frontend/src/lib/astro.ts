@@ -7,6 +7,24 @@ export type AstroTimes = {
   moonset: string | null;
 };
 
+export type AstroFieldHighlights = {
+  sunrise: boolean;
+  sunset: boolean;
+  moonrise: boolean;
+  moonset: boolean;
+};
+
+export type AstroResult = AstroTimes & {
+  fieldHighlights: AstroFieldHighlights;
+};
+
+const NO_ASTRO_HIGHLIGHTS: AstroFieldHighlights = {
+  sunrise: false,
+  sunset: false,
+  moonrise: false,
+  moonset: false,
+};
+
 function kasiApiOrigin(): string {
   if (import.meta.env.DEV) {
     return `${window.location.origin}/__proxy/kma`;
@@ -33,7 +51,7 @@ function getTomorrowDateKST() {
   return `${yyyy}${mm}${dd}`;
 }
 
-export async function getAstroTimes(kasiServiceKey: string): Promise<AstroTimes> {
+export async function getAstroTimes(kasiServiceKey: string): Promise<AstroResult> {
   const serviceKey = kasiServiceKey.trim();
 
   const encodedServiceKey = /%[0-9A-Fa-f]{2}/.test(serviceKey)
@@ -65,5 +83,6 @@ export async function getAstroTimes(kasiServiceKey: string): Promise<AstroTimes>
     sunset: formatHHMM(pick("sunset")),
     moonrise: formatHHMM(pick("moonrise")),
     moonset: formatHHMM(pick("moonset")),
+    fieldHighlights: NO_ASTRO_HIGHLIGHTS,
   };
 }

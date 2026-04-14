@@ -551,6 +551,10 @@ body {
   color: var(--text);
 }
 
+.astro-time.astro-value-changed {
+  color: #b91c1c;
+}
+
 .precip-card {
   margin-top: -0.8mm;
 }
@@ -691,6 +695,16 @@ body {
   background: var(--pm);
 }
 
+.precip-value-changed {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.forecast-cell-changed {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .forecast-card {
   padding-top: 0;
   margin-top: 1mm;
@@ -813,57 +827,41 @@ body {
   align-items: center;
 }
 
-.dust-circle {
+.dust-grade {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3.2mm;
-  height: 3.2mm;
-  border-radius: 50%;
-  border: 0.35mm solid currentColor;
-  line-height: 0;
+  font-size: 3mm;
+  font-weight: 700;
+  line-height: 1;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
+.dust-grade.dust-grade-bg-changed {
+  background-color: #e5e5e5;
+  border-radius: 0.35mm;
+  padding: 0.2mm 0.45mm;
+}
+
 .dust-good {
-  background: #3182ce;
   color: #3182ce;
 }
 
 .dust-normal {
-  background: #38a169;
   color: #38a169;
 }
 
 .dust-bad {
-  background: #d69e2e;
-  color: #d69e2e;
+  color: #eab308;
 }
 
 .dust-very-bad {
-  background: #e53e3e;
   color: #e53e3e;
 }
 
 .dust-unknown {
-  background: transparent;
   color: #718096;
-  border-style: dashed;
-}
-
-.dust-legend {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4mm;
-  margin-top: 2mm;
-  font-size: 3mm;
-}
-
-.dust-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.9mm;
 }
 
 .dust-detail:hover .marker-tooltip,
@@ -939,15 +937,4 @@ body {
     margin-top: 1mm;
   }
 
-  .dust-legend {
-    margin-top: 1.1mm;
-    gap: 3mm;
-    font-size: 2.8mm;
-  }
-
-  .dust-circle {
-    border: 0.35mm solid #000;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
 }

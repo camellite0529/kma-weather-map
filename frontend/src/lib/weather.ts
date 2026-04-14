@@ -2,7 +2,9 @@ import {
   MAP_CITIES,
   getTargetDate,
   summarizeLandForecast,
+  getTwoLatestAnnounceTimesFromItems,
   mergeLandMorningAfternoonWeather,
+  computeLandPublishHighlights,
   type City,
   type CityWeather,
   type DailyWeather,
@@ -199,6 +201,29 @@ function createDailyWeatherFromLand(
   };
 }
 
+function isDifferentNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): boolean {
+  const aa = a ?? null;
+  const bb = b ?? null;
+  return aa !== bb;
+}
+
+/** map 카드에 실제 표기되는 요약 필드 기준 비교 */
+function hasMapPortrayedSummaryChanged(
+  latest: DailyWeather,
+  previous: DailyWeather,
+): boolean {
+  return (
+    (latest.sky ?? null) !== (previous.sky ?? null) ||
+    (latest.amSky ?? null) !== (previous.amSky ?? null) ||
+    (latest.pmSky ?? null) !== (previous.pmSky ?? null) ||
+    isDifferentNumber(latest.minTemp, previous.minTemp) ||
+    isDifferentNumber(latest.maxTemp, previous.maxTemp)
+  );
+}
+
 function summarizeBase(announceTime: string | null) {
   const digits = String(announceTime ?? "").replace(/\D/g, "");
 
@@ -216,26 +241,53 @@ async function fetchCityForecast(
   serviceKey: string,
   city: City,
 ): Promise<CityForecastResult> {
-  const land = summarizeLandForecast(await fetchLandForecast(serviceKey, city));
+  const items = await fetchLandForecast(serviceKey, city);
+  const land = summarizeLandForecast(items);
+  const tomorrow = createDailyWeatherFromLand(
+    getTargetDate(1),
+    land.tomorrowAm,
+    land.tomorrowPm,
+  );
+  const dayAfterTomorrow = createDailyWeatherFromLand(
+    getTargetDate(2),
+    land.day2Am,
+    land.day2Pm,
+  );
+  const threeDaysLater = createDailyWeatherFromLand(
+    getTargetDate(3),
+    land.day3Am,
+    land.day3Pm,
+  );
+
+  const landPublishHighlights = computeLandPublishHighlights(items, city.regId);
+  if (landPublishHighlights) {
+    const pair = getTwoLatestAnnounceTimesFromItems(items);
+    if (pair) {
+      const previousItems = items.filter(
+        (item) => String(item.announceTime ?? "") === String(pair.previous),
+      );
+      const previousLand = summarizeLandForecast(previousItems);
+      const previousTomorrow = createDailyWeatherFromLand(
+        getTargetDate(1),
+        previousLand.tomorrowAm,
+        previousLand.tomorrowPm,
+      );
+      landPublishHighlights.tomorrowVisual = hasMapPortrayedSummaryChanged(
+        tomorrow,
+        previousTomorrow,
+      );
+    } else {
+      landPublishHighlights.tomorrowVisual = false;
+    }
+  }
 
   return {
     city: city.name,
     announceTime: land.announceTime,
-    tomorrow: createDailyWeatherFromLand(
-      getTargetDate(1),
-      land.tomorrowAm,
-      land.tomorrowPm,
-    ),
-    dayAfterTomorrow: createDailyWeatherFromLand(
-      getTargetDate(2),
-      land.day2Am,
-      land.day2Pm,
-    ),
-    threeDaysLater: createDailyWeatherFromLand(
-      getTargetDate(3),
-      land.day3Am,
-      land.day3Pm,
-    ),
+    landPublishHighlights: landPublishHighlights ?? undefined,
+    tomorrow,
+    dayAfterTomorrow,
+    threeDaysLater,
   };
 }
 
@@ -295,7 +347,7 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
 
   const latestBase = latestAnnounceTime(data);
   const weatherData: WeatherCityData[] = data.map(
-    ({ announceTime: _announceTime, ...item }) => item,
+    ({ announceTime: _announceTime, ...rest }) => rest,
   );
 
   return {
