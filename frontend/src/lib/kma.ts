@@ -456,9 +456,27 @@ export function getTwoLatestAnnounceTimesFromItems(
       Number(String(b).replace(/\D/g, "")),
   );
   if (sorted.length < 2) return null;
+  const latest = sorted[sorted.length - 1]!;
+  const latestHour = getAnnounceHour(latest);
+  const latestDate = String(latest).replace(/\D/g, "").slice(0, 8);
+
+  // 오후 5시 발표 하이라이트는 같은 날짜 11시 발표와만 비교한다.
+  if (latestHour === 17 && latestDate.length === 8) {
+    for (let i = sorted.length - 2; i >= 0; i--) {
+      const candidate = sorted[i]!;
+      const candDigits = String(candidate).replace(/\D/g, "");
+      if (candDigits.slice(0, 8) !== latestDate) continue;
+      if (getAnnounceHour(candidate) === 11) {
+        return { previous: candidate, latest };
+      }
+    }
+    // 같은 날짜 11시가 없으면 하이라이트를 만들지 않는다.
+    return null;
+  }
+
   return {
     previous: sorted[sorted.length - 2]!,
-    latest: sorted[sorted.length - 1]!,
+    latest,
   };
 }
 

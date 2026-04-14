@@ -12,6 +12,21 @@ npm run dev
 
 배포는 `npm run build` 후 `frontend/dist`를 정적 호스팅하면 됩니다.
 
+## Vercel 최소 구성(11시 vs 17시 하이라이트 공유)
+
+`frontend/api/map-baseline.ts` 서버 함수를 사용하면, 11시 기준값을 서버(KV)에 저장하고 17시에 다른 PC에서도 같은 기준으로 비교할 수 있습니다.
+
+- Vercel 프로젝트의 **Root Directory**를 `frontend`로 지정
+- Vercel KV(Upstash) 1개 생성
+- 환경변수 설정:
+  - `KV_REST_API_URL`
+  - `KV_REST_API_TOKEN`
+
+동작:
+- `11시` 발표(`baseTime`이 `11xx`) 로드 시 기준값을 `/api/map-baseline`에 저장
+- `17시` 발표(`baseTime`이 `17xx`) 로드 시 같은 날짜 기준을 조회해 map marker 하이라이트 계산
+- 저장 데이터 TTL은 48시간이라 날짜가 바뀌면 자연스럽게 새 기준으로 교체됨
+
 ## API 키
 
 - [공공데이터포털](https://www.data.go.kr/) 등에서 받은 **서비스 키 하나**로 기상(단기예보)·미세먼지·천문(출몰시각) API를 모두 호출합니다. (유저 추가 시 포털에서 활용신청 필요)
