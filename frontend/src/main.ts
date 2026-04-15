@@ -105,6 +105,21 @@ function clearStoredApiKey() {
   }
 }
 
+async function syncApiKeyToServer(apiKey: string): Promise<void> {
+  const normalized = apiKey.trim();
+  if (!normalized) return;
+  try {
+    await fetch("/api/user-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serviceKey: normalized }),
+      cache: "no-store",
+    });
+  } catch {
+    // 서버 등록 실패가 클라이언트 데이터 로드를 막지 않도록 무시
+  }
+}
+
 function getTodayDateString(): string {
   const today = new Date();
   return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
@@ -943,6 +958,7 @@ function attachApiKeyFormHandlers(
     }
 
     setStoredApiKey(apiKey);
+    void syncApiKeyToServer(apiKey);
 
     if (submitBtn) submitBtn.disabled = true;
 
@@ -1001,6 +1017,8 @@ async function bootstrap() {
     showApiKeyForm(root);
     return;
   }
+
+  void syncApiKeyToServer(key);
 
   showEmptyShell(root, key, { loadToolbarState: "loading" });
   try {

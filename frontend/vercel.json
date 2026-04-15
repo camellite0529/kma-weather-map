@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/collect-baseline",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/collect-baseline",
+      "schedule": "20 2 * * *"
+    }
+  ]
+}

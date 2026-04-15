@@ -59,12 +59,44 @@ export type WeatherResult = {
 type StoredTomorrowRow = {
   city: string;
   tomorrow: DailyWeather;
+  dayAfterTomorrow: DailyWeather;
+  threeDaysLater: DailyWeather;
 };
 
 type StoredMapHighlightBaseline = {
   date: string;
   rows: StoredTomorrowRow[];
 };
+
+const MAP_BASELINE_LOCAL_KEY_PREFIX = "kma:map-baseline:";
+
+function localBaselineKey(baseDate: string) {
+  return `${MAP_BASELINE_LOCAL_KEY_PREFIX}${baseDate}`;
+}
+
+function readLocalBaseline(baseDate: string): StoredMapHighlightBaseline | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(localBaselineKey(baseDate));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredMapHighlightBaseline;
+    if (!parsed || typeof parsed.date !== "string" || !Array.isArray(parsed.rows)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalBaseline(payload: StoredMapHighlightBaseline) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(localBaselineKey(payload.date), JSON.stringify(payload));
+  } catch {
+    // 로컬 저장 실패는 하이라이트 동작을 막지 않음
+  }
+}
 
 function isLikelyEncodedKey(value: string) {
   return /%[0-9A-Fa-f]{2}/.test(value);
@@ -231,6 +263,29 @@ function hasMapPortrayedSummaryChanged(
   );
 }
 
+function hasDailySummaryChanged(
+  latest: DailyWeather,
+  previous: DailyWeather,
+): boolean {
+  return (
+    (latest.sky ?? null) !== (previous.sky ?? null) ||
+    isDifferentNumber(latest.minTemp, previous.minTemp) ||
+    isDifferentNumber(latest.maxTemp, previous.maxTemp)
+  );
+}
+
+function emptyDailyWeather(): DailyWeather {
+  return {
+    minTemp: null,
+    maxTemp: null,
+    sky: null,
+    amSky: null,
+    pmSky: null,
+    amPop: null,
+    pmPop: null,
+  };
+}
+
 function summarizeBase(announceTime: string | null) {
   const digits = String(announceTime ?? "").replace(/\D/g, "");
 
@@ -281,38 +336,56 @@ function isFivePmPublish(baseTime: string): boolean {
 
 async function readStoredMapBaseline(
   baseDate: string,
+  apiKey: string,
 ): Promise<StoredMapHighlightBaseline | null> {
   if (typeof window === "undefined") return null;
   try {
     const response = await fetch(`/api/map-baseline?date=${baseDate}`, {
       cache: "no-store",
+      headers: { "x-kma-service-key": apiKey },
     });
-    if (!response.ok) return null;
+    if (!response.ok) return readLocalBaseline(baseDate);
     const json = (await response.json()) as {
       ok?: boolean;
       payload?: StoredMapHighlightBaseline | null;
     };
     const parsed = json.payload ?? null;
-    if (!parsed) return null;
+    if (!parsed) return readLocalBaseline(baseDate);
     if (!parsed || typeof parsed.date !== "string" || !Array.isArray(parsed.rows)) {
-      return null;
+      return readLocalBaseline(baseDate);
     }
     return parsed;
   } catch {
-    return null;
+    return readLocalBaseline(baseDate);
   }
 }
 
-async function writeStoredMapBaseline(baseDate: string, rows: WeatherCityData[]) {
+async function writeStoredMapBaseline(
+  baseDate: string,
+  rows: WeatherCityData[],
+  apiKey: string,
+) {
   if (typeof window === "undefined") return;
   const payload: StoredMapHighlightBaseline = {
     date: baseDate,
-    rows: rows.map((row) => ({ city: row.city, tomorrow: { ...row.tomorrow } })),
+    rows: rows.map((row) => ({
+      city: row.city,
+      tomorrow: { ...row.tomorrow },
+      dayAfterTomorrow: { ...row.dayAfterTomorrow },
+      threeDaysLater: { ...row.threeDaysLater },
+    })),
   };
+
+  // 서버 KV 여부와 무관하게 같은 브라우저에서는 11시→17시 비교가 가능하도록 보관
+  writeLocalBaseline(payload);
+
   try {
     await fetch("/api/map-baseline", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-kma-service-key": apiKey,
+      },
       body: JSON.stringify(payload),
       cache: "no-store",
     });
@@ -325,36 +398,73 @@ async function applyStoredMapHighlights(
   rows: WeatherCityData[],
   baseDate: string,
   baseTime: string,
+  apiKey: string,
 ): Promise<WeatherCityData[]> {
-  const stored = await readStoredMapBaseline(baseDate);
+  const stored = await readStoredMapBaseline(baseDate, apiKey);
   const sameDateBaseline = stored && stored.date === baseDate ? stored : null;
-  const previousTomorrowByCity = sameDateBaseline
-    ? new Map(sameDateBaseline.rows.map((row) => [row.city, row.tomorrow]))
+  const previousByCity = sameDateBaseline
+    ? new Map(sameDateBaseline.rows.map((row) => [row.city, row]))
     : null;
-  const useStoredCompare = isFivePmPublish(baseTime) && previousTomorrowByCity != null;
+  const useStoredCompare = isFivePmPublish(baseTime) && previousByCity != null;
 
   const nextRows = rows.map((row) => {
-    const prev = previousTomorrowByCity?.get(row.city) ?? null;
-    const storedChanged =
+    const prev = previousByCity?.get(row.city) ?? null;
+    const prevTomorrow = prev?.tomorrow ?? emptyDailyWeather();
+    const prevDayAfterTomorrow = prev?.dayAfterTomorrow ?? emptyDailyWeather();
+    const prevThreeDaysLater = prev?.threeDaysLater ?? emptyDailyWeather();
+    const storedTomorrowVisualChanged =
       useStoredCompare && prev != null
-        ? hasMapPortrayedSummaryChanged(row.tomorrow, prev)
+        ? hasMapPortrayedSummaryChanged(row.tomorrow, prevTomorrow)
+        : false;
+    const storedTomorrowAmPopChanged =
+      useStoredCompare && prev != null
+        ? isDifferentNumber(row.tomorrow.amPop, prevTomorrow.amPop)
+        : false;
+    const storedTomorrowPmPopChanged =
+      useStoredCompare && prev != null
+        ? isDifferentNumber(row.tomorrow.pmPop, prevTomorrow.pmPop)
+        : false;
+    const storedDayAfterTomorrowChanged =
+      useStoredCompare && prev != null
+        ? hasDailySummaryChanged(row.dayAfterTomorrow, prevDayAfterTomorrow)
+        : false;
+    const storedThreeDaysLaterChanged =
+      useStoredCompare && prev != null
+        ? hasDailySummaryChanged(row.threeDaysLater, prevThreeDaysLater)
         : false;
 
-    if (!storedChanged) return row;
+    const hasAnyStoredHighlight =
+      storedTomorrowVisualChanged ||
+      storedTomorrowAmPopChanged ||
+      storedTomorrowPmPopChanged ||
+      storedDayAfterTomorrowChanged ||
+      storedThreeDaysLaterChanged;
+
+    if (!hasAnyStoredHighlight) return row;
     return {
       ...row,
       landPublishHighlights: {
-        tomorrowVisual: true,
-        tomorrowAmPop: row.landPublishHighlights?.tomorrowAmPop ?? false,
-        tomorrowPmPop: row.landPublishHighlights?.tomorrowPmPop ?? false,
-        dayAfterTomorrow: row.landPublishHighlights?.dayAfterTomorrow ?? false,
-        threeDaysLater: row.landPublishHighlights?.threeDaysLater ?? false,
+        tomorrowVisual:
+          (row.landPublishHighlights?.tomorrowVisual ?? false) ||
+          storedTomorrowVisualChanged,
+        tomorrowAmPop:
+          (row.landPublishHighlights?.tomorrowAmPop ?? false) ||
+          storedTomorrowAmPopChanged,
+        tomorrowPmPop:
+          (row.landPublishHighlights?.tomorrowPmPop ?? false) ||
+          storedTomorrowPmPopChanged,
+        dayAfterTomorrow:
+          (row.landPublishHighlights?.dayAfterTomorrow ?? false) ||
+          storedDayAfterTomorrowChanged,
+        threeDaysLater:
+          (row.landPublishHighlights?.threeDaysLater ?? false) ||
+          storedThreeDaysLaterChanged,
       },
     };
   });
 
   if (baseTime.startsWith("11")) {
-    await writeStoredMapBaseline(baseDate, rows);
+    await writeStoredMapBaseline(baseDate, rows, apiKey);
   }
 
   return nextRows;
@@ -423,6 +533,7 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
     weatherData,
     base.baseDate,
     base.baseTime,
+    kmaServiceKey,
   );
 
   return {

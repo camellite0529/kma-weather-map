@@ -12,19 +12,24 @@ npm run dev
 
 배포는 `npm run build` 후 `frontend/dist`를 정적 호스팅하면 됩니다.
 
-## Vercel 최소 구성(11시 vs 17시 하이라이트 공유)
+## Vercel 최소 구성(사용자별 11시 vs 17시 하이라이트 공유)
 
-`frontend/api/map-baseline.ts` 서버 함수를 사용하면, 11시 기준값을 서버(KV)에 저장하고 17시에 다른 PC에서도 같은 기준으로 비교할 수 있습니다.
+`frontend/api/map-baseline.ts`, `frontend/api/user-key.ts`, `frontend/api/collect-baseline.ts`를 사용하면, 각 사용자가 입력한 키 기준으로 11시 기준값을 서버(KV)에 저장하고 17시에 같은 키 사용자끼리 비교할 수 있습니다.
 
 - Vercel 프로젝트의 **Root Directory**를 `frontend`로 지정
 - Vercel KV(Upstash) 1개 생성
 - 환경변수 설정:
   - `KV_REST_API_URL`
   - `KV_REST_API_TOKEN`
+  - `CRON_SECRET` (Vercel cron 보호용)
+- `frontend/vercel.json`의 cron(`0 2 * * *`, `20 2 * * *`)이 KST 11:00, 11:20에 `/api/collect-baseline`을 호출하도록 배포
+- Cron 요청 헤더에 `Authorization: Bearer <CRON_SECRET>` 또는 `x-cron-secret: <CRON_SECRET>` 전달
 
 동작:
-- `11시` 발표(`baseTime`이 `11xx`) 로드 시 기준값을 `/api/map-baseline`에 저장
-- `17시` 발표(`baseTime`이 `17xx`) 로드 시 같은 날짜 기준을 조회해 map marker 하이라이트 계산
+- 사용자가 키를 입력/재실행하면 `/api/user-key`로 키를 서버에 등록
+- `11시` 발표(`baseTime`이 `11xx`) 로드 시 사용자 키 해시 기준으로 `/api/map-baseline`에 저장
+- Vercel cron이 11시 자동 수집으로 사용자 키별 baseline을 갱신
+- `17시` 발표(`baseTime`이 `17xx`) 로드 시 같은 키 해시의 같은 날짜 기준을 조회해 하이라이트 계산
 - 저장 데이터 TTL은 48시간이라 날짜가 바뀌면 자연스럽게 새 기준으로 교체됨
 
 ## API 키
