@@ -7,7 +7,7 @@ import {
   kvSet,
   sha256Hex,
   type BaselinePayload,
-} from "./_baseline-common";
+} from "./_baseline-common.js";
 
 const BASELINE_TTL_SECONDS = 60 * 60 * 48;
 

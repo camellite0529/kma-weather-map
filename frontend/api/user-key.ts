@@ -5,7 +5,7 @@ import {
   sha256Hex,
   userKeysKvKey,
   type RegisteredUserKey,
-} from "./_baseline-common";
+} from "./_baseline-common.js";
 
 type UserKeyBody = {
   serviceKey?: string;

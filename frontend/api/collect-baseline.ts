@@ -10,7 +10,7 @@ import {
   type BaselineDailyWeather,
   type BaselinePayload,
   type RegisteredUserKey,
-} from "./_baseline-common";
+} from "./_baseline-common.js";
 
 type City = {
   name: string;
