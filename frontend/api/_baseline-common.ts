@@ -34,20 +34,29 @@ export function isValidKeyHash(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
 }
 
+function digestToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /**
- * Vercel Node 런타임에서 `globalThis.crypto.subtle`이 없는 경우가 있어
- * `node:crypto`의 `webcrypto`를 사용한다.
+ * Edge: `globalThis.crypto.subtle`만 사용.
+ * Node(Vercel): subtle 없을 때만 `node:crypto`를 동적 import (정적 import는 번들/런타임 충돌 방지).
  */
 export async function sha256Hex(value: string): Promise<string> {
-  const subtle = webcrypto.subtle;
-  if (subtle) {
-    const data = new TextEncoder().encode(value);
-    const hashBuffer = await subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+  const data = new TextEncoder().encode(value);
+
+  const globalSubtle = globalThis.crypto?.subtle;
+  if (globalSubtle) {
+    return digestToHex(await globalSubtle.digest("SHA-256", data));
   }
-  return createHash("sha256").update(value).digest("hex");
+
+  const nodeCrypto = await import("node:crypto");
+  if (nodeCrypto.webcrypto?.subtle) {
+    return digestToHex(await nodeCrypto.webcrypto.subtle.digest("SHA-256", data));
+  }
+  return nodeCrypto.createHash("sha256").update(value).digest("hex");
 }
 
 export function kstDateYmd(now = new Date()): string {
