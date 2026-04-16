@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export type BaselineDailyWeather = {
   minTemp: number | null;
   maxTemp: number | null;
@@ -36,8 +34,13 @@ export function isValidKeyHash(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
 }
 
-export function sha256Hex(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
+/** Node·Edge 공통 (Vercel 서버리스에서 `node:crypto` 이슈 회피) */
+export async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function kstDateYmd(now = new Date()): string {

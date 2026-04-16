@@ -39,12 +39,12 @@ function headerValue(headers: any, key: string): string {
   return String(raw).trim();
 }
 
-function resolveKeyHash(req: any): string | null {
+async function resolveKeyHash(req: any): Promise<string | null> {
   const keyHashQuery = String(req.query?.keyHash ?? "").trim();
   if (isValidKeyHash(keyHashQuery)) return keyHashQuery;
 
   const serviceKey = headerValue(req.headers, "x-kma-service-key");
-  if (serviceKey) return sha256Hex(serviceKey);
+  if (serviceKey) return await sha256Hex(serviceKey);
 
   // Backward compatibility for older baseline format without per-user partition
   return null;
@@ -52,7 +52,7 @@ function resolveKeyHash(req: any): string | null {
 
 export default async function handler(req: any, res: any) {
   try {
-    const keyHash = resolveKeyHash(req);
+    const keyHash = await resolveKeyHash(req);
 
     if (req.method === "GET") {
       const date = String(req.query?.date ?? "").trim();

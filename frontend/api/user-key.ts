@@ -77,7 +77,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const keyHash = sha256Hex(serviceKey);
+    const keyHash = await sha256Hex(serviceKey);
     const next: RegisteredUserKey = {
       keyHash,
       serviceKey,
