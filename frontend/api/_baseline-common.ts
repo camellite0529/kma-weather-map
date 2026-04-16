@@ -123,23 +123,32 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   const rawResult = json.result;
   if (rawResult == null) return null;
 
-  // Some KV gateways return { result: { value: ... } } or stringified JSON payloads.
-  const unwrapped =
-    typeof rawResult === "object" &&
-    rawResult != null &&
-    "value" in (rawResult as Record<string, unknown>)
-      ? (rawResult as Record<string, unknown>).value
-      : rawResult;
-
-  if (typeof unwrapped === "string") {
-    try {
-      return JSON.parse(unwrapped) as T;
-    } catch {
-      return unwrapped as unknown as T;
+  // Upstash 응답 변형을 최대한 흡수:
+  // - { result: { value: ... } }
+  // - { result: "{\"value\":...}" }
+  // - { result: "{\"date\":\"...\",\"rows\":[...]}" }
+  let current: unknown = rawResult;
+  for (let i = 0; i < 3; i++) {
+    if (typeof current === "string") {
+      try {
+        current = JSON.parse(current) as unknown;
+      } catch {
+        break;
+      }
+      continue;
     }
+    if (
+      typeof current === "object" &&
+      current != null &&
+      "value" in (current as Record<string, unknown>)
+    ) {
+      current = (current as Record<string, unknown>).value;
+      continue;
+    }
+    break;
   }
 
-  return unwrapped as T;
+  return current as T;
 }
 
 export async function kvSet<T>(key: string, value: T, exSeconds?: number): Promise<void> {
