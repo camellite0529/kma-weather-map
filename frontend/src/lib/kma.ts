@@ -51,16 +51,24 @@ export type DailyWeather = {
   pmPop: number | null;
 };
 
-/** 직전 발표 대비 변경 여부(동일 regId·numEf 페이로드 비교, 최신 발표 시각 기준 슬롯 매핑). */
+/** 직전 발표 대비, UI에 실제 보이는 값 단위 변경 여부 */
 export type LandPublishHighlight = {
-  /** 지도 카드(내일 날씨·기온·툴팁) */
-  tomorrowVisual: boolean;
+  /** 지도 카드: 내일 요약 날씨 */
+  tomorrowSky: boolean;
+  /** 지도 카드/예상날씨: 내일 최저기온 숫자 */
+  tomorrowMinTemp: boolean;
+  /** 지도 카드/예상날씨: 내일 최고기온 숫자 */
+  tomorrowMaxTemp: boolean;
   /** 강수확률(%) 오전 막대 */
   tomorrowAmPop: boolean;
   /** 강수확률(%) 오후 막대 */
   tomorrowPmPop: boolean;
-  dayAfterTomorrow: boolean;
-  threeDaysLater: boolean;
+  dayAfterTomorrowSky: boolean;
+  dayAfterTomorrowMinTemp: boolean;
+  dayAfterTomorrowMaxTemp: boolean;
+  threeDaysLaterSky: boolean;
+  threeDaysLaterMinTemp: boolean;
+  threeDaysLaterMaxTemp: boolean;
 };
 
 export type CityWeather = {
@@ -399,6 +407,39 @@ function collectNumEfsForSlots(
   return out;
 }
 
+function collectSlotTemperatures(slots: Array<LandSlotValue | undefined>) {
+  const values = slots
+    .map((slot) => slot?.ta)
+    .filter(
+      (value): value is number =>
+        typeof value === "number" && Number.isFinite(value),
+    );
+
+  return {
+    minTemp: values.length ? Math.min(...values) : null,
+    maxTemp: values.length ? Math.max(...values) : null,
+  };
+}
+
+function dailyFromLandSlots(
+  morning?: LandSlotValue,
+  afternoon?: LandSlotValue,
+): DailyWeather {
+  const amSky = morning?.label ?? null;
+  const pmSky = afternoon?.label ?? null;
+  const { minTemp, maxTemp } = collectSlotTemperatures([morning, afternoon]);
+
+  return {
+    minTemp,
+    maxTemp,
+    sky: mergeLandMorningAfternoonWeather(amSky, pmSky) ?? pmSky ?? amSky,
+    amSky,
+    pmSky,
+    amPop: morning?.rnSt ?? null,
+    pmPop: afternoon?.rnSt ?? null,
+  };
+}
+
 /**
  * 최신·직전 발표시각 각각의 항목을 regId+numEf로 맞춘 뒤 페이로드가 달라졌는지 검사하고,
  * 최신 발표 시각 기준으로 내일/모레/글피 슬롯에 매핑되는 numEf만 UI 플래그로 반환합니다.
@@ -412,71 +453,30 @@ export function computeLandPublishHighlights(
   const latestHour = getAnnounceHour(pair.latest);
   if (latestHour !== 17) return null;
 
-  const prevItems = items.filter(
-    (i) => String(i.announceTime ?? "") === String(pair.previous),
-  );
-  const latestItems = items.filter(
-    (i) => String(i.announceTime ?? "") === String(pair.latest),
-  );
-  const prevMap = buildLandCompareMap(prevItems, regId);
-  const latestMap = buildLandCompareMap(latestItems, regId);
+  const prevItems = items.filter((i) => String(i.announceTime ?? "") === String(pair.previous));
+  const latestItems = items.filter((i) => String(i.announceTime ?? "") === String(pair.latest));
+  const prevSummary = summarizeLandForecast(prevItems);
+  const latestSummary = summarizeLandForecast(latestItems);
 
-  const reg =
-    String(latestItems[0]?.regId ?? prevItems[0]?.regId ?? regId).trim() ||
-    regId;
-
-  const keyDiffers = (numEf: number): boolean => {
-    const k = landFcstCompareKey(reg, numEf);
-    return prevMap.get(k) !== latestMap.get(k);
-  };
-
-  const latestAT = pair.latest;
-  const tomorrowEfs = collectNumEfsForSlots(latestAT, [
-    "tomorrowAm",
-    "tomorrowPm",
-  ]);
-  const day2Efs = collectNumEfsForSlots(latestAT, ["day2Am", "day2Pm"]);
-  const day3Efs = collectNumEfsForSlots(latestAT, ["day3Am", "day3Pm"]);
-
-  let tomorrowAmPop = false;
-  let tomorrowPmPop = false;
-  let tomorrowVisual = false;
-
-  for (const n of tomorrowEfs) {
-    if (!keyDiffers(n)) continue;
-    const slot = resolveLandSlot(latestAT, n);
-    if (slot === "tomorrowAm") {
-      tomorrowAmPop = true;
-      tomorrowVisual = true;
-    }
-    if (slot === "tomorrowPm") {
-      tomorrowPmPop = true;
-      tomorrowVisual = true;
-    }
-  }
-
-  let dayAfterTomorrow = false;
-  for (const n of day2Efs) {
-    if (keyDiffers(n)) {
-      dayAfterTomorrow = true;
-      break;
-    }
-  }
-
-  let threeDaysLater = false;
-  for (const n of day3Efs) {
-    if (keyDiffers(n)) {
-      threeDaysLater = true;
-      break;
-    }
-  }
+  const prevTomorrow = dailyFromLandSlots(prevSummary.tomorrowAm, prevSummary.tomorrowPm);
+  const latestTomorrow = dailyFromLandSlots(latestSummary.tomorrowAm, latestSummary.tomorrowPm);
+  const prevDay2 = dailyFromLandSlots(prevSummary.day2Am, prevSummary.day2Pm);
+  const latestDay2 = dailyFromLandSlots(latestSummary.day2Am, latestSummary.day2Pm);
+  const prevDay3 = dailyFromLandSlots(prevSummary.day3Am, prevSummary.day3Pm);
+  const latestDay3 = dailyFromLandSlots(latestSummary.day3Am, latestSummary.day3Pm);
 
   return {
-    tomorrowVisual,
-    tomorrowAmPop,
-    tomorrowPmPop,
-    dayAfterTomorrow,
-    threeDaysLater,
+    tomorrowSky: (latestTomorrow.sky ?? null) !== (prevTomorrow.sky ?? null),
+    tomorrowMinTemp: (latestTomorrow.minTemp ?? null) !== (prevTomorrow.minTemp ?? null),
+    tomorrowMaxTemp: (latestTomorrow.maxTemp ?? null) !== (prevTomorrow.maxTemp ?? null),
+    tomorrowAmPop: (latestTomorrow.amPop ?? null) !== (prevTomorrow.amPop ?? null),
+    tomorrowPmPop: (latestTomorrow.pmPop ?? null) !== (prevTomorrow.pmPop ?? null),
+    dayAfterTomorrowSky: (latestDay2.sky ?? null) !== (prevDay2.sky ?? null),
+    dayAfterTomorrowMinTemp: (latestDay2.minTemp ?? null) !== (prevDay2.minTemp ?? null),
+    dayAfterTomorrowMaxTemp: (latestDay2.maxTemp ?? null) !== (prevDay2.maxTemp ?? null),
+    threeDaysLaterSky: (latestDay3.sky ?? null) !== (prevDay3.sky ?? null),
+    threeDaysLaterMinTemp: (latestDay3.minTemp ?? null) !== (prevDay3.minTemp ?? null),
+    threeDaysLaterMaxTemp: (latestDay3.maxTemp ?? null) !== (prevDay3.maxTemp ?? null),
   };
 }
 

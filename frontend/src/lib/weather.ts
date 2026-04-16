@@ -267,29 +267,14 @@ function isDifferentNumber(
   return aa !== bb;
 }
 
-/** map 카드에 실제 표기되는 요약 필드 기준 비교 */
-function hasMapPortrayedSummaryChanged(
-  latest: DailyWeather,
-  previous: DailyWeather,
-): boolean {
-  return (
-    (latest.sky ?? null) !== (previous.sky ?? null) ||
-    (latest.amSky ?? null) !== (previous.amSky ?? null) ||
-    (latest.pmSky ?? null) !== (previous.pmSky ?? null) ||
-    isDifferentNumber(latest.minTemp, previous.minTemp) ||
-    isDifferentNumber(latest.maxTemp, previous.maxTemp)
-  );
-}
-
-function hasDailySummaryChanged(
-  latest: DailyWeather,
-  previous: DailyWeather,
-): boolean {
-  return (
-    (latest.sky ?? null) !== (previous.sky ?? null) ||
-    isDifferentNumber(latest.minTemp, previous.minTemp) ||
-    isDifferentNumber(latest.maxTemp, previous.maxTemp)
-  );
+function getDailyFieldChanges(latest: DailyWeather, previous: DailyWeather) {
+  return {
+    sky: (latest.sky ?? null) !== (previous.sky ?? null),
+    minTemp: isDifferentNumber(latest.minTemp, previous.minTemp),
+    maxTemp: isDifferentNumber(latest.maxTemp, previous.maxTemp),
+    amPop: isDifferentNumber(latest.amPop, previous.amPop),
+    pmPop: isDifferentNumber(latest.pmPop, previous.pmPop),
+  };
 }
 
 function emptyDailyWeather(): DailyWeather {
@@ -322,10 +307,13 @@ function formatTempValue(value: number): string {
 }
 
 function buildTomorrowNationalTempRangeText(rows: WeatherCityData[]): string {
-  const tomorrowMins = rows
+  const excludedCities = new Set(["이어도", "울릉도", "독도"]);
+  const nationwideRows = rows.filter((row) => !excludedCities.has(row.city));
+
+  const tomorrowMins = nationwideRows
     .map((row) => row.tomorrow.minTemp)
     .filter((value): value is number => value != null && Number.isFinite(value));
-  const tomorrowMaxs = rows
+  const tomorrowMaxs = nationwideRows
     .map((row) => row.tomorrow.maxTemp)
     .filter((value): value is number => value != null && Number.isFinite(value));
 
@@ -501,53 +489,69 @@ async function applyStoredMapHighlights(
     const prevTomorrow = prev?.tomorrow ?? emptyDailyWeather();
     const prevDayAfterTomorrow = prev?.dayAfterTomorrow ?? emptyDailyWeather();
     const prevThreeDaysLater = prev?.threeDaysLater ?? emptyDailyWeather();
-    const storedTomorrowVisualChanged =
+    const tomorrowChanges =
       useStoredCompare && prev != null
-        ? hasMapPortrayedSummaryChanged(row.tomorrow, prevTomorrow)
-        : false;
-    const storedTomorrowAmPopChanged =
+        ? getDailyFieldChanges(row.tomorrow, prevTomorrow)
+        : null;
+    const day2Changes =
       useStoredCompare && prev != null
-        ? isDifferentNumber(row.tomorrow.amPop, prevTomorrow.amPop)
-        : false;
-    const storedTomorrowPmPopChanged =
+        ? getDailyFieldChanges(row.dayAfterTomorrow, prevDayAfterTomorrow)
+        : null;
+    const day3Changes =
       useStoredCompare && prev != null
-        ? isDifferentNumber(row.tomorrow.pmPop, prevTomorrow.pmPop)
-        : false;
-    const storedDayAfterTomorrowChanged =
-      useStoredCompare && prev != null
-        ? hasDailySummaryChanged(row.dayAfterTomorrow, prevDayAfterTomorrow)
-        : false;
-    const storedThreeDaysLaterChanged =
-      useStoredCompare && prev != null
-        ? hasDailySummaryChanged(row.threeDaysLater, prevThreeDaysLater)
-        : false;
+        ? getDailyFieldChanges(row.threeDaysLater, prevThreeDaysLater)
+        : null;
 
     const hasAnyStoredHighlight =
-      storedTomorrowVisualChanged ||
-      storedTomorrowAmPopChanged ||
-      storedTomorrowPmPopChanged ||
-      storedDayAfterTomorrowChanged ||
-      storedThreeDaysLaterChanged;
+      tomorrowChanges?.sky === true ||
+      tomorrowChanges?.minTemp === true ||
+      tomorrowChanges?.maxTemp === true ||
+      tomorrowChanges?.amPop === true ||
+      tomorrowChanges?.pmPop === true ||
+      day2Changes?.sky === true ||
+      day2Changes?.minTemp === true ||
+      day2Changes?.maxTemp === true ||
+      day3Changes?.sky === true ||
+      day3Changes?.minTemp === true ||
+      day3Changes?.maxTemp === true;
 
     if (!hasAnyStoredHighlight) return row;
     return {
       ...row,
       landPublishHighlights: {
-        tomorrowVisual:
-          (row.landPublishHighlights?.tomorrowVisual ?? false) ||
-          storedTomorrowVisualChanged,
+        tomorrowSky:
+          (row.landPublishHighlights?.tomorrowSky ?? false) ||
+          (tomorrowChanges?.sky ?? false),
+        tomorrowMinTemp:
+          (row.landPublishHighlights?.tomorrowMinTemp ?? false) ||
+          (tomorrowChanges?.minTemp ?? false),
+        tomorrowMaxTemp:
+          (row.landPublishHighlights?.tomorrowMaxTemp ?? false) ||
+          (tomorrowChanges?.maxTemp ?? false),
         tomorrowAmPop:
           (row.landPublishHighlights?.tomorrowAmPop ?? false) ||
-          storedTomorrowAmPopChanged,
+          (tomorrowChanges?.amPop ?? false),
         tomorrowPmPop:
           (row.landPublishHighlights?.tomorrowPmPop ?? false) ||
-          storedTomorrowPmPopChanged,
-        dayAfterTomorrow:
-          (row.landPublishHighlights?.dayAfterTomorrow ?? false) ||
-          storedDayAfterTomorrowChanged,
-        threeDaysLater:
-          (row.landPublishHighlights?.threeDaysLater ?? false) ||
-          storedThreeDaysLaterChanged,
+          (tomorrowChanges?.pmPop ?? false),
+        dayAfterTomorrowSky:
+          (row.landPublishHighlights?.dayAfterTomorrowSky ?? false) ||
+          (day2Changes?.sky ?? false),
+        dayAfterTomorrowMinTemp:
+          (row.landPublishHighlights?.dayAfterTomorrowMinTemp ?? false) ||
+          (day2Changes?.minTemp ?? false),
+        dayAfterTomorrowMaxTemp:
+          (row.landPublishHighlights?.dayAfterTomorrowMaxTemp ?? false) ||
+          (day2Changes?.maxTemp ?? false),
+        threeDaysLaterSky:
+          (row.landPublishHighlights?.threeDaysLaterSky ?? false) ||
+          (day3Changes?.sky ?? false),
+        threeDaysLaterMinTemp:
+          (row.landPublishHighlights?.threeDaysLaterMinTemp ?? false) ||
+          (day3Changes?.minTemp ?? false),
+        threeDaysLaterMaxTemp:
+          (row.landPublishHighlights?.threeDaysLaterMaxTemp ?? false) ||
+          (day3Changes?.maxTemp ?? false),
       },
     };
   });

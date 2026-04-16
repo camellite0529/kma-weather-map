@@ -160,6 +160,10 @@ function tempText(value: number | null) {
   return value == null ? "-" : `${Math.round(value)}°`;
 }
 
+function tempTextPlain(value: number | null) {
+  return value == null ? "-" : `${Math.round(value)}`;
+}
+
 function displayPercent(value: number | null) {
   if (value == null || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -350,17 +354,32 @@ function renderCompactDayTable(
   rows: CityWeather[],
   kind: "dayAfterTomorrow" | "threeDaysLater",
 ) {
-  const changedKey =
-    kind === "dayAfterTomorrow" ? "dayAfterTomorrow" : "threeDaysLater";
   const body = rows
     .map((row) => {
-      const ch = row.landPublishHighlights?.[changedKey] === true;
-      const cellCls = ch ? "forecast-cell-changed" : "";
+      const skyChanged =
+        kind === "dayAfterTomorrow"
+          ? row.landPublishHighlights?.dayAfterTomorrowSky === true
+          : row.landPublishHighlights?.threeDaysLaterSky === true;
+      const minChanged =
+        kind === "dayAfterTomorrow"
+          ? row.landPublishHighlights?.dayAfterTomorrowMinTemp === true
+          : row.landPublishHighlights?.threeDaysLaterMinTemp === true;
+      const maxChanged =
+        kind === "dayAfterTomorrow"
+          ? row.landPublishHighlights?.dayAfterTomorrowMaxTemp === true
+          : row.landPublishHighlights?.threeDaysLaterMaxTemp === true;
+      const skyCls = skyChanged ? "forecast-value-changed" : "";
+      const minCls = minChanged ? "forecast-value-changed" : "";
+      const maxCls = maxChanged ? "forecast-value-changed" : "";
       return `
     <tr>
       <th scope="row">${escapeHtml(row.city)}</th>
-      <td${cellCls ? ` class="${cellCls}"` : ""}>${escapeHtml(row[kind].sky ?? "-")}</td>
-      <td${cellCls ? ` class="${cellCls}"` : ""}>${tempText(row[kind].minTemp)} / ${tempText(row[kind].maxTemp)}</td>
+      <td${skyCls ? ` class="${skyCls}"` : ""}>${escapeHtml(row[kind].sky ?? "-")}</td>
+      <td>
+        <span${minCls ? ` class="${minCls}"` : ""}>${tempTextPlain(row[kind].minTemp)}</span>
+        <span> / </span>
+        <span${maxCls ? ` class="${maxCls}"` : ""}>${tempTextPlain(row[kind].maxTemp)}</span>
+      </td>
     </tr>`;
     })
     .join("");
@@ -405,18 +424,19 @@ function renderPage(
   const markersHtml = weather.data
     .map((item) => {
       const pos = getMarkerPosition(item.city);
-      const markerCh =
-        item.landPublishHighlights?.tomorrowVisual === true
-          ? " marker-card--publish-changed"
-          : "";
+      const skyChanged = item.landPublishHighlights?.tomorrowSky === true;
+      const minChanged = item.landPublishHighlights?.tomorrowMinTemp === true;
+      const maxChanged = item.landPublishHighlights?.tomorrowMaxTemp === true;
       return `
       <div class="map-marker" style="left: ${pos.left}; top: ${pos.top}">
-        <div class="marker-card${markerCh}">
-          <div class="marker-weather">${escapeHtml(item.tomorrow.sky ?? "-")}</div>
+        <div class="marker-card">
+          <div class="marker-weather${skyChanged ? " marker-value-changed" : ""}">${escapeHtml(item.tomorrow.sky ?? "-")}</div>
           <div class="marker-line">
             <strong class="marker-city">${escapeHtml(item.city)}</strong>
             <span class="marker-temp">
-              ${tempText(item.tomorrow.minTemp)} / ${tempText(item.tomorrow.maxTemp)}
+              <span${minChanged ? ` class="marker-value-changed"` : ""}>${tempText(item.tomorrow.minTemp)}</span>
+              <span> / </span>
+              <span${maxChanged ? ` class="marker-value-changed"` : ""}>${tempText(item.tomorrow.maxTemp)}</span>
             </span>
           </div>
           <div class="marker-tooltip" aria-hidden="true">
@@ -437,7 +457,7 @@ function renderPage(
   const dustHead = dust.regions
     .map(
       (item) =>
-        `<div class="dust-col-head${item.details?.length ? " dust-detail" : ""}"${item.details?.length ? ' tabindex="0"' : ""}>${escapeHtml(item.displayLabel).replace(/\n/g, "<br />")}${renderDustDetailTooltip(item.details)}</div>`,
+        `<div class="dust-col-head">${escapeHtml(item.displayLabel).replace(/\n/g, "<br />")}</div>`,
     )
     .join("");
 
@@ -528,7 +548,8 @@ function renderPage(
             >
               기상개황
             </a>
-            <a
+            <button
+              type="button"
               class="notice-link-btn"
               id="sea-forecast-btn"
               aria-haspopup="dialog"

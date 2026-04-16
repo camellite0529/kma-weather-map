@@ -209,7 +209,7 @@
 
 .data-load-status-label {
   font-size: 1.55rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1.05;
 }
@@ -515,6 +515,7 @@ body {
   margin-top: 12px;
   max-height: min(50vh, 360px);
   overflow-y: auto;
+  font-size: 3.5mm;
 }
 
 .notice-button-row {
@@ -713,13 +714,24 @@ body {
 }
 
 .precip-value-changed {
-  color: #b91c1c;
-  font-weight: 800;
+  background-color: #e5e5e5;
+  border-radius: 0.35mm;
+  padding: 0.2mm 0.45mm;
+  color: #111111;
+  font-weight: 700;
 }
 
-.forecast-cell-changed {
-  color: #b91c1c;
+.value-highlight-chip,
+.forecast-value-changed,
+.dust-grade.dust-grade-bg-changed {
+  background-color: #e5e5e5;
+  border-radius: 0.35mm;
+  padding: 0.2mm 0.45mm;
   font-weight: 700;
+}
+
+.forecast-value-changed {
+  color: #111111;
 }
 
 .forecast-card {
@@ -802,8 +814,11 @@ body {
 .dust-table {
   display: flex;
   flex-direction: column;
-  gap: 1.6mm;
+  gap: 0;
   margin-top: 1.4mm;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 2mm;
+  overflow: visible;
 }
 
 .dust-table-head,
@@ -814,26 +829,40 @@ body {
   align-items: center;
 }
 
+.dust-table-head {
+  background: #efefef;
+  padding: 0.6mm 0.9mm;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dust-table-row {
+  padding: 0.9mm 1.1mm;
+}
+
+.dust-table-row + .dust-table-row {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .dust-left-spacer {
   height: 1px;
 }
 
 .dust-col-head {
-  font-size: 3mm;
+  font-size: 3.35mm;
   text-align: center;
   line-height: 1.15;
   white-space: pre-line;
   word-break: keep-all;
+  padding: 0.25mm 0.4mm;
 }
 
-.dust-col-head.dust-detail,
 .dust-cell.dust-detail {
   position: relative;
   cursor: help;
 }
 
 .dust-row-label {
-  font-size: 3mm;
+  font-size: 3.4mm;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -848,17 +877,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 3mm;
-  font-weight: 700;
+  font-size: 3.4mm;
+  font-weight: 500;
   line-height: 1;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
 .dust-grade.dust-grade-bg-changed {
-  background-color: #e5e5e5;
-  border-radius: 0.35mm;
-  padding: 0.2mm 0.45mm;
+  font-weight: 700;
 }
 
 .dust-good {

@@ -72,15 +72,15 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.marker-card.marker-card--publish-changed {
-  border: 2px solid #b91c1c;
-  color: #b91c1c;
-}
-
 .marker-weather {
   font-size: 4.5mm;
   font-weight: 400;
   line-height: 1.1;
+}
+
+.marker-value-changed {
+  color: #b91c1c;
+  font-weight: 800;
 }
 
 .marker-line {
