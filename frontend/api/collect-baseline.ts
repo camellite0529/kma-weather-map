@@ -314,7 +314,8 @@ async function collectBaselineRowsForKey(serviceKey: string): Promise<{
 }
 
 function isAuthorizedCron(req: any): boolean {
-  const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
+  const env = (globalThis as any)?.process?.env;
+  const cronSecret = String(env?.CRON_SECRET ?? "").trim();
   if (!cronSecret) return false;
   const auth = String(req.headers?.authorization ?? "").trim();
   const xSecret = String(req.headers?.["x-cron-secret"] ?? "").trim();

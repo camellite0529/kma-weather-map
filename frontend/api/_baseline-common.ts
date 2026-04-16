@@ -62,10 +62,15 @@ export function kstDateYmd(now = new Date()): string {
 }
 
 /** Vercel KV / 수동 설정 이름 + Upstash 대시보드 기본 이름 모두 지원 */
+function envValue(name: string): string {
+  const env = (globalThis as any)?.process?.env;
+  return String(env?.[name] ?? "").trim();
+}
+
 function kvBaseUrl(): string {
   const raw = String(
-    process.env.KV_REST_API_URL ??
-      process.env.UPSTASH_REDIS_REST_URL ??
+    envValue("KV_REST_API_URL") ||
+      envValue("UPSTASH_REDIS_REST_URL") ||
       "",
   ).trim();
   return raw.replace(/\/+$/, "");
@@ -73,8 +78,8 @@ function kvBaseUrl(): string {
 
 function kvToken(): string {
   return String(
-    process.env.KV_REST_API_TOKEN ??
-      process.env.UPSTASH_REDIS_REST_TOKEN ??
+    envValue("KV_REST_API_TOKEN") ||
+      envValue("UPSTASH_REDIS_REST_TOKEN") ||
       "",
   ).trim();
 }

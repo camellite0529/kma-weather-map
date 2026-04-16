@@ -21,9 +21,9 @@ function parseRequestBody(req: any): BaselinePayload | null {
       return null;
     }
   }
-  if (typeof Buffer !== "undefined" && Buffer.isBuffer(raw)) {
+  if (raw instanceof Uint8Array) {
     try {
-      return JSON.parse(raw.toString("utf8")) as BaselinePayload;
+      return JSON.parse(new TextDecoder().decode(raw)) as BaselinePayload;
     } catch {
       return null;
     }

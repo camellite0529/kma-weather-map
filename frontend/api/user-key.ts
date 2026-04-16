@@ -36,9 +36,9 @@ function parseUserKeyBody(req: any): UserKeyBody | null {
       return null;
     }
   }
-  if (typeof Buffer !== "undefined" && Buffer.isBuffer(raw)) {
+  if (raw instanceof Uint8Array) {
     try {
-      return JSON.parse(raw.toString("utf8")) as UserKeyBody;
+      return JSON.parse(new TextDecoder().decode(raw)) as UserKeyBody;
     } catch {
       return null;
     }
