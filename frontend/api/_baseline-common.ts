@@ -114,13 +114,32 @@ export async function kvGet<T>(key: string): Promise<T | null> {
     );
   }
 
-  let json: { result?: T | null };
+  let json: { result?: unknown };
   try {
-    json = JSON.parse(text) as { result?: T | null };
+    json = JSON.parse(text) as { result?: unknown };
   } catch {
     throw new Error(`KV GET invalid JSON: ${text.slice(0, 200)}`);
   }
-  return json.result ?? null;
+  const rawResult = json.result;
+  if (rawResult == null) return null;
+
+  // Some KV gateways return { result: { value: ... } } or stringified JSON payloads.
+  const unwrapped =
+    typeof rawResult === "object" &&
+    rawResult != null &&
+    "value" in (rawResult as Record<string, unknown>)
+      ? (rawResult as Record<string, unknown>).value
+      : rawResult;
+
+  if (typeof unwrapped === "string") {
+    try {
+      return JSON.parse(unwrapped) as T;
+    } catch {
+      return unwrapped as unknown as T;
+    }
+  }
+
+  return unwrapped as T;
 }
 
 export async function kvSet<T>(key: string, value: T, exSeconds?: number): Promise<void> {
