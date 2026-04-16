@@ -473,6 +473,16 @@ async function writeStoredMapBaseline(
   }
 }
 
+export async function persistElevenAmBaselineSnapshot(
+  weather: Pick<WeatherResult, "base" | "data">,
+  apiKey: string,
+): Promise<void> {
+  const baseDate = weather.base.baseDate;
+  const baseTime = weather.base.baseTime;
+  if (!baseDate || baseDate === "-" || !baseTime.startsWith("11")) return;
+  await writeStoredMapBaseline(baseDate, weather.data, apiKey);
+}
+
 async function applyStoredMapHighlights(
   rows: WeatherCityData[],
   baseDate: string,
@@ -542,6 +552,8 @@ async function applyStoredMapHighlights(
     };
   });
 
+  // 11시 발표 데이터만 baseline으로 저장한다.
+  // (17시 발표 데이터는 노출/비교에만 사용)
   if (baseTime.startsWith("11")) {
     await writeStoredMapBaseline(baseDate, rows, apiKey);
   }

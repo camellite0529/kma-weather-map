@@ -9,7 +9,11 @@ import {
   type CityWeather,
   type DailyWeather,
 } from "./lib/kma";
-import { getWeatherData, type WeatherResult } from "./lib/weather";
+import {
+  getWeatherData,
+  persistElevenAmBaselineSnapshot,
+  type WeatherResult,
+} from "./lib/weather";
 import { getAstroTimes, type AstroResult } from "./lib/astro";
 import {
   createEmptyDustData,
@@ -33,6 +37,13 @@ const LEGACY_KEYS = [
 const STORAGE_NOTE_TITLE = "kma_weather_note_title";
 const STORAGE_NOTE_BODY = "kma_weather_note_body";
 const STORAGE_NOTE_DATE = "kma_weather_note_date";
+const KST_TIMEZONE = "Asia/Seoul";
+const BASELINE_TIMER_HOUR = 11;
+const BASELINE_TIMER_MINUTE = 30;
+
+let latestWeatherSnapshot: WeatherResult | null = null;
+let latestWeatherApiKey: string | null = null;
+let baselineSaveTimerId: number | null = null;
 
 /** 춘천–강릉, 세종–청주, 전주–부산 구간처럼 묶음 경계(해당 행 위 가로선을 굵게) */
 const PRECIP_STRONG_DIVIDER_BEFORE_CITY = new Set(["강릉", "청주", "부산"]);
@@ -596,6 +607,38 @@ function renderPage(
   `;
 }
 
+function getKstNow() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: KST_TIMEZONE }));
+}
+
+function msUntilNextKstBaselineSave() {
+  const nowKst = getKstNow();
+  const target = new Date(nowKst);
+  target.setHours(BASELINE_TIMER_HOUR, BASELINE_TIMER_MINUTE, 0, 0);
+  if (target <= nowKst) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target.getTime() - nowKst.getTime();
+}
+
+function scheduleDailyElevenAmBaselineSave() {
+  if (baselineSaveTimerId != null) {
+    window.clearTimeout(baselineSaveTimerId);
+  }
+
+  baselineSaveTimerId = window.setTimeout(async () => {
+    try {
+      if (latestWeatherSnapshot && latestWeatherApiKey) {
+        await persistElevenAmBaselineSnapshot(latestWeatherSnapshot, latestWeatherApiKey);
+      }
+    } catch {
+      // 타이머 저장 실패는 UI 동작을 막지 않음
+    } finally {
+      scheduleDailyElevenAmBaselineSave();
+    }
+  }, msUntilNextKstBaselineSave());
+}
+
 function renderSeaForecastDialogHtml(sea: SeaForecastData) {
   const rows = sea.regions
     .map((item) => {
@@ -819,6 +862,9 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
       : createEmptySeaForecastData();
 
   resetNotesIfDayChanged();
+  latestWeatherSnapshot = weather;
+  latestWeatherApiKey = apiKey;
+  scheduleDailyElevenAmBaselineSave();
   app.innerHTML = renderPage(weather, astro, dust);
   bindPngDownload(app);
   bindTodayNotePersistence(app);
