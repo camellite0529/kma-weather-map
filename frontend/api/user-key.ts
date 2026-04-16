@@ -1,4 +1,5 @@
 import {
+  isKvConfigured,
   kvGet,
   kvSet,
   sha256Hex,
@@ -25,6 +26,29 @@ function mergeUserKeys(
   return [next, ...filtered].slice(0, KEY_LIST_LIMIT);
 }
 
+function parseUserKeyBody(req: any): UserKeyBody | null {
+  const raw = req.body;
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as UserKeyBody;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(raw)) {
+    try {
+      return JSON.parse(raw.toString("utf8")) as UserKeyBody;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object") {
+    return raw as UserKeyBody;
+  }
+  return null;
+}
+
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== "POST") {
@@ -33,8 +57,21 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const body = req.body as UserKeyBody;
-    const serviceKey = sanitizeServiceKey(body?.serviceKey);
+    if (!isKvConfigured()) {
+      res.status(503).json({
+        ok: false,
+        error:
+          "KV is not configured. In Vercel → Settings → Environment Variables, set either KV_REST_API_URL + KV_REST_API_TOKEN or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, then redeploy.",
+      });
+      return;
+    }
+
+    const body = parseUserKeyBody(req);
+    if (!body) {
+      res.status(400).json({ error: "Invalid JSON body." });
+      return;
+    }
+    const serviceKey = sanitizeServiceKey(body.serviceKey);
     if (!serviceKey) {
       res.status(400).json({ error: "Missing serviceKey." });
       return;

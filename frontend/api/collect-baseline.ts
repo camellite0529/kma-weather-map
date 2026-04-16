@@ -1,6 +1,7 @@
 import mapCitiesJson from "../data/map-cities.json";
 import {
   baselineKvKey,
+  isKvConfigured,
   isValidDate,
   kstDateYmd,
   kvGet,
@@ -329,6 +330,14 @@ export default async function handler(req: any, res: any) {
     }
     if (!isAuthorizedCron(req)) {
       res.status(401).json({ error: "Unauthorized." });
+      return;
+    }
+    if (!isKvConfigured()) {
+      res.status(503).json({
+        ok: false,
+        error:
+          "KV is not configured. Set KV_REST_API_URL + KV_REST_API_TOKEN or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.",
+      });
       return;
     }
 

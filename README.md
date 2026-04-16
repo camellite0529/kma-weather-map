@@ -18,9 +18,9 @@ npm run dev
 
 - Vercel 프로젝트의 **Root Directory**를 `frontend`로 지정
 - Vercel KV(Upstash) 1개 생성
-- 환경변수 설정:
-  - `KV_REST_API_URL`
-  - `KV_REST_API_TOKEN`
+- 환경변수 설정 (둘 중 **한 세트**면 됨 — Upstash 대시보드는 보통 아래 이름):
+  - `KV_REST_API_URL` + `KV_REST_API_TOKEN`, 또는
+  - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
   - `CRON_SECRET` (Vercel cron 보호용)
 - `frontend/vercel.json`의 cron(`0 2 * * *`, `20 2 * * *`)이 KST 11:00, 11:20에 `/api/collect-baseline`을 호출하도록 배포
 - Cron 요청 헤더에 `Authorization: Bearer <CRON_SECRET>` 또는 `x-cron-secret: <CRON_SECRET>` 전달

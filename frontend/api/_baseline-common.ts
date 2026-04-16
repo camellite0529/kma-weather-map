@@ -48,13 +48,26 @@ export function kstDateYmd(now = new Date()): string {
   return `${yyyy}${mm}${dd}`;
 }
 
+/** Vercel KV / 수동 설정 이름 + Upstash 대시보드 기본 이름 모두 지원 */
 function kvBaseUrl(): string {
-  const raw = String(process.env.KV_REST_API_URL ?? "").trim();
+  const raw = String(
+    process.env.KV_REST_API_URL ??
+      process.env.UPSTASH_REDIS_REST_URL ??
+      "",
+  ).trim();
   return raw.replace(/\/+$/, "");
 }
 
 function kvToken(): string {
-  return String(process.env.KV_REST_API_TOKEN ?? "").trim();
+  return String(
+    process.env.KV_REST_API_TOKEN ??
+      process.env.UPSTASH_REDIS_REST_TOKEN ??
+      "",
+  ).trim();
+}
+
+export function isKvConfigured(): boolean {
+  return Boolean(kvBaseUrl() && kvToken());
 }
 
 export function baselineKvKey(date: string, keyHash: string): string {
@@ -96,7 +109,9 @@ export async function kvSet<T>(key: string, value: T, exSeconds?: number): Promi
   const baseUrl = kvBaseUrl();
   const token = kvToken();
   if (!baseUrl || !token) {
-    throw new Error("KV env is not configured.");
+    throw new Error(
+      "KV is not configured. Set KV_REST_API_URL + KV_REST_API_TOKEN, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.",
+    );
   }
 
   const body: { value: T; ex?: number } = { value };

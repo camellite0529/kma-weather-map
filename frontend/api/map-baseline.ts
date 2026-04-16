@@ -1,5 +1,6 @@
 import {
   baselineKvKey,
+  isKvConfigured,
   isValidDate,
   isValidKeyHash,
   kvGet,
@@ -81,6 +82,14 @@ export default async function handler(req: any, res: any) {
       }
       if (!keyHash) {
         res.status(400).json({ error: "Missing key context." });
+        return;
+      }
+      if (!isKvConfigured()) {
+        res.status(503).json({
+          ok: false,
+          error:
+            "KV is not configured. Set KV_REST_API_URL + KV_REST_API_TOKEN or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, then redeploy.",
+        });
         return;
       }
       await kvSet(
