@@ -17,6 +17,8 @@ export type LandFcstItem = {
   rnYn?: string | number;
   ta?: string | number;
   wf?: string;
+  wfSv?: string;
+  wfSv1?: string;
   wfCd?: string;
 };
 

@@ -132,6 +132,7 @@ const SEA_REGION_GROUPS: readonly {
 type SeaRegionComputed = {
   label: string;
   waveRangeText: string | null;
+  minWave: number | null;
   maxWave: number | null;
 };
 
@@ -399,6 +400,7 @@ async function summarizeRegion(
     return {
       label: group.label,
       waveRangeText: null,
+      minWave: null,
       maxWave: null,
     };
   }
@@ -409,26 +411,80 @@ async function summarizeRegion(
   return {
     label: group.label,
     waveRangeText: formatWaveRange(minWave, maxWave),
+    minWave,
     maxWave,
   };
 }
 
-function buildSummaryText(regions: SeaRegionComputed[]): string {
-  let strongest: SeaRegionComputed | null = null;
+function seaAreaFromLabel(label: string): "west" | "south" | "east" | "unknown" {
+  if (label.startsWith("서해")) return "west";
+  if (label.startsWith("남해")) return "south";
+  if (label.startsWith("동해")) return "east";
+  return "unknown";
+}
 
-  for (const region of regions) {
-    if (region.maxWave == null || region.waveRangeText == null) continue;
+function quoteLabels(labels: string[]): string {
+  return labels.join(", ");
+}
 
-    if (!strongest || region.maxWave > strongest.maxWave) {
-      strongest = region;
-    }
+function compactSameAreaLabels(labels: string[]): string {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+
+  const [first, ...rest] = labels;
+  const area = first.split(" ")[0];
+
+  if (!area || !rest.every((label) => label.startsWith(`${area} `))) {
+    return quoteLabels(labels);
   }
 
-  if (!strongest || !strongest.waveRangeText) {
+  const compacted = [first, ...rest.map((label) => label.slice(area.length + 1))].join(", ");
+  return compacted;
+}
+
+function buildSummaryText(regions: SeaRegionComputed[]): string {
+  const validRegions = regions.filter(
+    (region): region is SeaRegionComputed & { minWave: number; maxWave: number; waveRangeText: string } =>
+      region.minWave != null && region.maxWave != null && region.waveRangeText != null,
+  );
+
+  if (validRegions.length === 0) {
     return "바다의 물결 정보가 없습니다.";
   }
 
-  return `바다의 물결은 ${strongest.label}에서 ${strongest.waveRangeText}m로 일겠다.`;
+  const highestMax = Math.max(...validRegions.map((region) => region.maxWave));
+  const maxTiedRegions = validRegions.filter((region) => region.maxWave === highestMax);
+
+  const highestMin = Math.max(...maxTiedRegions.map((region) => region.minWave));
+  const strongest = maxTiedRegions.filter((region) => region.minWave === highestMin);
+
+  if (strongest.length === 1) {
+    const [picked] = strongest;
+    return `바다의 물결은 ${picked.label}에서 ${picked.waveRangeText}m로 일겠다.`;
+  }
+
+  const sameArea =
+    strongest.length > 0 &&
+    strongest.every((region) => seaAreaFromLabel(region.label) === seaAreaFromLabel(strongest[0].label));
+
+  if (sameArea) {
+    const sorted = [...strongest].sort((a, b) => a.label.localeCompare(b.label, "ko"));
+    const pickedLabels = sorted.slice(0, 2).map((region) => region.label);
+    return `바다의 물결은 ${compactSameAreaLabels(pickedLabels)}에서 ${sorted[0].waveRangeText}m로 일겠다.`;
+  }
+
+  const uniqueByArea = new Map<string, SeaRegionComputed & { minWave: number; maxWave: number; waveRangeText: string }>();
+  for (const region of strongest) {
+    const area = seaAreaFromLabel(region.label);
+    if (!uniqueByArea.has(area)) {
+      uniqueByArea.set(area, region);
+    }
+  }
+  const pickedByArea = [...uniqueByArea.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, "ko"))
+    .slice(0, 2);
+
+  return `바다의 물결은 ${quoteLabels(pickedByArea.map((region) => region.label))}에서 ${pickedByArea[0].waveRangeText}m로 일겠다.`;
 }
 
 function toPublicSeaData(computed: SeaRegionComputed[]): SeaForecastData {
@@ -445,6 +501,7 @@ export function createEmptySeaForecastData(): SeaForecastData {
   const computed: SeaRegionComputed[] = SEA_REGION_GROUPS.map((group) => ({
     label: group.label,
     waveRangeText: null,
+    minWave: null,
     maxWave: null,
   }));
   return toPublicSeaData(computed);
@@ -463,6 +520,7 @@ export async function getSeaForecastData(serviceKey: string): Promise<SeaForecas
     return {
       label: group.label,
       waveRangeText: null,
+      minWave: null,
       maxWave: null,
     };
   });

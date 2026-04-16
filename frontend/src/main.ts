@@ -219,6 +219,8 @@ function createEmptyWeatherResult(): WeatherResult {
   return {
     base: { baseDate: "-", baseTime: "-" },
     updatedAt: "",
+    landOverviewText: "",
+    tomorrowNationalTempRangeText: "-",
     data: MAP_CITIES.map((c) => ({
       city: c.name,
       tomorrow: emptyDaily(),
@@ -509,6 +511,21 @@ function renderPage(
             <div class="notice-button-row">
             <a
               class="notice-link-btn"
+              id="land-overview-btn"
+              href="#"
+              role="button"
+            >
+              기상개황
+            </a>
+            <a
+              class="notice-link-btn"
+              id="sea-forecast-btn"
+              aria-haspopup="dialog"
+            >
+              파고
+            </button>
+            <a
+              class="notice-link-btn notice-link-btn-muted"
               href="https://www.weather.go.kr/w/forecast/notice.do"
               target="_blank"
               rel="noreferrer noopener"
@@ -516,21 +533,13 @@ function renderPage(
               통보문
             </a>
             <a
-              class="notice-link-btn"
+              class="notice-link-btn notice-link-btn-muted"
               href="https://www.airkorea.or.kr/web/dustForecast?pMENU_NO=113"
               target="_blank"
               rel="noreferrer noopener"
             >
               미세먼지
             </a>
-            <button
-              type="button"
-              class="notice-link-btn"
-              id="sea-forecast-btn"
-              aria-haspopup="dialog"
-            >
-              파고
-            </button>
           </div>
             ${renderAstroCard(astro)}
           </div>
@@ -541,6 +550,7 @@ function renderPage(
             <div class="map-shell">
               <div class="map-stage">
                 <h2 class="map-title">전국날씨(℃)</h2>
+                <p class="map-national-range">${escapeHtml(weather.tomorrowNationalTempRangeText)}</p>
                 <img src="${import.meta.env.BASE_URL}map-bg.png" alt="대한민국 지도" class="map-image" />
                 ${markersHtml}
               </div>
@@ -643,6 +653,56 @@ function copyTextWithFallback(text: string): Promise<void> {
     } finally {
       textarea.remove();
     }
+  });
+}
+
+function renderLandOverviewDialogHtml(text: string) {
+  const safeText = text.trim() || "기상개황 정보가 없습니다.";
+  return `
+    <div class="api-key-overlay" id="land-overview-overlay">
+      <div class="api-key-dialog sea-forecast-dialog" role="dialog" aria-modal="true" aria-labelledby="land-overview-title">
+        <h2 id="land-overview-title">단기예보 통보문 기상개황</h2>
+        <p class="sea-forecast-summary land-overview-summary" id="land-overview-summary">${escapeHtml(safeText)}</p>
+        <div class="api-key-actions">
+          <button type="button" class="secondary" id="land-overview-close">닫기</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindLandOverviewButton(app: HTMLElement, landOverviewText: string) {
+  const btn = app.querySelector<HTMLAnchorElement>("#land-overview-btn");
+  if (!btn) return;
+
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (app.querySelector("#land-overview-overlay")) return;
+
+    app.insertAdjacentHTML("beforeend", renderLandOverviewDialogHtml(landOverviewText));
+    const overlay = app.querySelector<HTMLElement>("#land-overview-overlay");
+    if (!overlay) return;
+
+    const closeBtn = overlay.querySelector<HTMLButtonElement>("#land-overview-close");
+    let escapeHandler: ((event: KeyboardEvent) => void) | null = null;
+
+    const dismiss = () => {
+      if (escapeHandler) {
+        document.removeEventListener("keydown", escapeHandler);
+        escapeHandler = null;
+      }
+      overlay.remove();
+    };
+
+    escapeHandler = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key === "Escape") dismiss();
+    };
+
+    document.addEventListener("keydown", escapeHandler);
+    overlay.addEventListener("click", (overlayEvent) => {
+      if (overlayEvent.target === overlay) dismiss();
+    });
+    closeBtn?.addEventListener("click", dismiss);
   });
 }
 
@@ -764,6 +824,7 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
   bindTodayNotePersistence(app);
   bindWeatherRefresh(app, apiKey);
   bindSettingsButton(app);
+  bindLandOverviewButton(app, weather.landOverviewText);
   bindSeaForecastButton(app, sea);
 }
 
@@ -792,6 +853,7 @@ function showEmptyShell(
     bindWeatherRefresh(app, apiKey);
   }
   bindSettingsButton(app);
+  bindLandOverviewButton(app, "");
   bindSeaForecastButton(app, createEmptySeaForecastData());
 }
 

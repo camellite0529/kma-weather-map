@@ -73,6 +73,8 @@
   color: #111827;
   font-size: 0.92rem;
   line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .api-key-dialog h2 {
@@ -495,9 +497,24 @@ body {
   font-family: inherit;
 }
 
+.notice-link-btn-muted {
+  background: #8d95a3;
+}
+
 .notice-link-btn:hover,
 .notice-link-btn:focus-visible {
   background: #4b5563;
+}
+
+.notice-link-btn-muted:hover,
+.notice-link-btn-muted:focus-visible {
+  background: #727b8a;
+}
+
+.land-overview-summary {
+  margin-top: 12px;
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
 }
 
 .notice-button-row {

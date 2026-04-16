@@ -35,8 +35,11 @@ function kmaApiOrigin(): string {
 
 const LAND_BASE_URL =
   `${kmaApiOrigin()}/1360000/VilageFcstMsgService/getLandFcst`;
+const LAND_OVERVIEW_BASE_URL =
+  `${kmaApiOrigin()}/1360000/VilageFcstMsgService/getWthrSituation`;
 const REQUEST_TIMEOUT_MS = 12000;
 const CONCURRENCY = 5;
+const LAND_OVERVIEW_STN_ID = "108";
 
 type WeatherWarning = {
   city: string;
@@ -52,6 +55,8 @@ type CityForecastResult = WeatherCityData & {
 export type WeatherResult = {
   base: { baseDate: string; baseTime: string };
   updatedAt: string;
+  landOverviewText: string;
+  tomorrowNationalTempRangeText: string;
   data: WeatherCityData[];
   warnings: WeatherWarning[];
 };
@@ -139,6 +144,19 @@ function buildLandRequestUrl({
   });
 
   return `${LAND_BASE_URL}?ServiceKey=${encodedServiceKey}&${params.toString()}`;
+}
+
+function buildLandOverviewRequestUrl(serviceKey: string): string {
+  const encodedServiceKey = isLikelyEncodedKey(serviceKey)
+    ? serviceKey
+    : encodeURIComponent(serviceKey.trim());
+  const params = new URLSearchParams({
+    pageNo: "1",
+    numOfRows: "10",
+    dataType: "JSON",
+    stnId: LAND_OVERVIEW_STN_ID,
+  });
+  return `${LAND_OVERVIEW_BASE_URL}?ServiceKey=${encodedServiceKey}&${params.toString()}`;
 }
 
 async function fetchJsonWithValidation(url: string, cityName: string) {
@@ -297,6 +315,67 @@ function summarizeBase(announceTime: string | null) {
     baseDate: digits.slice(0, 8),
     baseTime: digits.slice(8, 12).padEnd(4, "0"),
   };
+}
+
+function formatTempValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function buildTomorrowNationalTempRangeText(rows: WeatherCityData[]): string {
+  const tomorrowMins = rows
+    .map((row) => row.tomorrow.minTemp)
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const tomorrowMaxs = rows
+    .map((row) => row.tomorrow.maxTemp)
+    .filter((value): value is number => value != null && Number.isFinite(value));
+
+  if (tomorrowMins.length === 0 || tomorrowMaxs.length === 0) return "-";
+
+  const minLow = Math.min(...tomorrowMins);
+  const minHigh = Math.max(...tomorrowMins);
+  const maxLow = Math.min(...tomorrowMaxs);
+  const maxHigh = Math.max(...tomorrowMaxs);
+
+  return `전국 최저기온 ${formatTempValue(minLow)}~${formatTempValue(minHigh)} / 최고기온 ${formatTempValue(maxLow)}~${formatTempValue(maxHigh)}`;
+}
+
+function extractOverviewTextFromJson(json: any): string {
+  const resultCode = json?.response?.header?.resultCode;
+  if (resultCode && resultCode !== "00") return "";
+  const items = json?.response?.body?.items?.item;
+  const first = Array.isArray(items) ? items[0] : items;
+  const wfSv1 = typeof first?.wfSv1 === "string" ? first.wfSv1.trim() : "";
+  if (wfSv1) return wfSv1;
+  const wfSv = typeof first?.wfSv === "string" ? first.wfSv.trim() : "";
+  return wfSv;
+}
+
+async function fetchLandOverviewText(serviceKey: string): Promise<string> {
+  const normalizedKey = normalizeServiceKey(serviceKey);
+  if (!normalizedKey) return "";
+
+  const url = buildLandOverviewRequestUrl(normalizedKey);
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url);
+  } catch {
+    return "";
+  }
+
+  if (!res.ok) return "";
+  const raw = await res.text();
+  let json: any;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return "";
+  }
+
+  try {
+    return extractOverviewTextFromJson(json);
+  } catch {
+    return "";
+  }
 }
 
 async function fetchCityForecast(
@@ -501,9 +580,12 @@ function latestAnnounceTime(data: CityForecastResult[]) {
 }
 
 export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResult> {
-  const settled = await runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
-    fetchCityForecast(kmaServiceKey, city),
-  );
+  const [settled, landOverviewText] = await Promise.all([
+    runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
+      fetchCityForecast(kmaServiceKey, city),
+    ),
+    fetchLandOverviewText(kmaServiceKey),
+  ]);
 
   const data = settled.flatMap((item) =>
     item.status === "fulfilled" ? [item.value] : [],
@@ -539,6 +621,8 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
   return {
     base,
     updatedAt: new Date().toISOString(),
+    landOverviewText,
+    tomorrowNationalTempRangeText: buildTomorrowNationalTempRangeText(weatherData),
     data: highlightedData,
     warnings,
   };

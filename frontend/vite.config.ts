@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/__proxy\/air/, ""),
       },
+      "/__proxy/kma-hub": {
+        target: "https://apihub.kma.go.kr",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/__proxy\/kma-hub/, ""),
+      },
     },
   },
 });
