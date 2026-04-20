@@ -863,7 +863,7 @@ body {
 }
 
 .dust-row-label {
-  font-size: 3.35mm;
+  font-size: 3.25mm;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -878,7 +878,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 3.4mm;
+  font-size: 3.25mm;
   font-weight: 500;
   line-height: 1;
   print-color-adjust: exact;
