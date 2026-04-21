@@ -1,6 +1,5 @@
 import "./styles/page.css";
 import "./styles/map.css";
-import html2canvas from "html2canvas";
 import {
   MAP_CITIES,
   TABLE_CITIES,
@@ -44,6 +43,8 @@ const BASELINE_TIMER_MINUTE = 30;
 let latestWeatherSnapshot: WeatherResult | null = null;
 let latestWeatherApiKey: string | null = null;
 let baselineSaveTimerId: number | null = null;
+let weatherLoadVersion = 0;
+const seaForecastCache = new Map<string, SeaForecastData>();
 
 /** 춘천–강릉, 세종–청주, 전주–부산 구간처럼 묶음 경계(해당 행 위 가로선을 굵게) */
 const PRECIP_STRONG_DIVIDER_BEFORE_CITY = new Set(["강릉", "청주", "부산"]);
@@ -73,23 +74,19 @@ function html2CanvasCloneNoteInputs(clonedRoot: HTMLElement) {
   });
 }
 
-function warmupWeatherExportCanvas(app: HTMLElement) {
-  const sheet = app.querySelector<HTMLElement>("#weather-export-root");
-  if (!sheet) return;
-  const run = () => {
-    void html2canvas(sheet, {
-      scale: 1,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      scrollX: 0,
-      scrollY: -window.scrollY,
-      onclone: (_doc, clonedRoot) => {
-        html2CanvasCloneNoteInputs(clonedRoot);
-      },
-    }).catch(() => {});
-  };
-  requestAnimationFrame(() => requestAnimationFrame(run));
+async function loadHtml2Canvas() {
+  const mod = await import("html2canvas");
+  return mod.default;
+}
+
+function getCachedSeaForecast(apiKey: string): SeaForecastData | null {
+  return seaForecastCache.get(apiKey.trim()) ?? null;
+}
+
+function setCachedSeaForecast(apiKey: string, data: SeaForecastData) {
+  const normalized = apiKey.trim();
+  if (!normalized) return;
+  seaForecastCache.set(normalized, data);
 }
 
 function getStoredApiKey(): string {
@@ -770,57 +767,98 @@ function bindLandOverviewButton(app: HTMLElement, landOverviewText: string) {
   });
 }
 
-function bindSeaForecastButton(app: HTMLElement, sea: SeaForecastData) {
+function openSeaForecastDialog(app: HTMLElement, sea: SeaForecastData) {
+  if (app.querySelector("#sea-forecast-overlay")) return;
+
+  app.insertAdjacentHTML("beforeend", renderSeaForecastDialogHtml(sea));
+  const overlay = app.querySelector<HTMLElement>("#sea-forecast-overlay");
+  if (!overlay) return;
+
+  const closeBtn =
+    overlay.querySelector<HTMLButtonElement>("#sea-forecast-close");
+  const copyBtn =
+    overlay.querySelector<HTMLButtonElement>("#sea-forecast-copy");
+
+  let escapeHandler: ((event: KeyboardEvent) => void) | null = null;
+
+  const dismiss = () => {
+    if (escapeHandler) {
+      document.removeEventListener("keydown", escapeHandler);
+      escapeHandler = null;
+    }
+    overlay.remove();
+  };
+
+  escapeHandler = (event: KeyboardEvent) => {
+    if (event.key === "Escape") dismiss();
+  };
+
+  document.addEventListener("keydown", escapeHandler);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) dismiss();
+  });
+  closeBtn?.addEventListener("click", dismiss);
+
+  copyBtn?.addEventListener("click", async () => {
+    const originalText = copyBtn.textContent;
+    copyBtn.disabled = true;
+    try {
+      await copyTextWithFallback(sea.summaryText);
+      copyBtn.textContent = "복사됨";
+    } catch {
+      copyBtn.textContent = "복사 실패";
+    } finally {
+      window.setTimeout(() => {
+        copyBtn.textContent = originalText ?? "복사";
+        copyBtn.disabled = false;
+      }, 1200);
+    }
+  });
+}
+
+function bindSeaForecastButton(
+  app: HTMLElement,
+  options: { apiKey?: string; sea?: SeaForecastData },
+) {
   const btn = app.querySelector<HTMLButtonElement>("#sea-forecast-btn");
   if (!btn) return;
+  const defaultLabel = btn.textContent ?? "파고";
+  let isLoading = false;
 
-  btn.addEventListener("click", () => {
-    if (app.querySelector("#sea-forecast-overlay")) return;
+  btn.addEventListener("click", async () => {
+    if (app.querySelector("#sea-forecast-overlay") || isLoading) return;
 
-    app.insertAdjacentHTML("beforeend", renderSeaForecastDialogHtml(sea));
-    const overlay = app.querySelector<HTMLElement>("#sea-forecast-overlay");
-    if (!overlay) return;
+    if (options.sea) {
+      openSeaForecastDialog(app, options.sea);
+      return;
+    }
 
-    const closeBtn =
-      overlay.querySelector<HTMLButtonElement>("#sea-forecast-close");
-    const copyBtn =
-      overlay.querySelector<HTMLButtonElement>("#sea-forecast-copy");
+    const apiKey = options.apiKey?.trim() ?? "";
+    if (!apiKey) {
+      openSeaForecastDialog(app, createEmptySeaForecastData());
+      return;
+    }
 
-    let escapeHandler: ((event: KeyboardEvent) => void) | null = null;
+    const cached = getCachedSeaForecast(apiKey);
+    if (cached) {
+      openSeaForecastDialog(app, cached);
+      return;
+    }
 
-    const dismiss = () => {
-      if (escapeHandler) {
-        document.removeEventListener("keydown", escapeHandler);
-        escapeHandler = null;
-      }
-      overlay.remove();
-    };
-
-    escapeHandler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismiss();
-    };
-
-    document.addEventListener("keydown", escapeHandler);
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) dismiss();
-    });
-    closeBtn?.addEventListener("click", dismiss);
-
-    copyBtn?.addEventListener("click", async () => {
-      const originalText = copyBtn.textContent;
-      copyBtn.disabled = true;
-      try {
-        await copyTextWithFallback(sea.summaryText);
-        copyBtn.textContent = "복사됨";
-      } catch {
-        copyBtn.textContent = "복사 실패";
-      } finally {
-        window.setTimeout(() => {
-          copyBtn.textContent = originalText ?? "복사";
-          copyBtn.disabled = false;
-        }, 1200);
-      }
-    });
+    isLoading = true;
+    btn.disabled = true;
+    btn.textContent = "파고 로딩중…";
+    try {
+      const sea = await getSeaForecastData(apiKey);
+      setCachedSeaForecast(apiKey, sea);
+      openSeaForecastDialog(app, sea);
+    } catch {
+      window.alert("파고 정보를 불러오지 못했습니다.");
+    } finally {
+      isLoading = false;
+      btn.disabled = false;
+      btn.textContent = defaultLabel;
+    }
   });
 }
 
@@ -832,6 +870,7 @@ function bindPngDownload(container: HTMLElement) {
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     try {
+      const html2canvas = await loadHtml2Canvas();
       const canvas = await html2canvas(sheet, {
         scale: 2,
         useCORS: true,
@@ -864,35 +903,55 @@ function bindPngDownload(container: HTMLElement) {
   });
 }
 
-async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
-  const weatherPromise = getWeatherData(apiKey);
-  const auxiliaryPromise = Promise.allSettled([
+function bindLoadedPageInteractions(
+  app: HTMLElement,
+  apiKey: string,
+  landOverviewText: string,
+) {
+  bindPngDownload(app);
+  bindTodayNotePersistence(app);
+  bindWeatherRefresh(app, apiKey);
+  bindSettingsButton(app);
+  bindLandOverviewButton(app, landOverviewText);
+  bindSeaForecastButton(app, { apiKey });
+}
+
+async function hydrateAuxiliaryDataIntoApp(
+  app: HTMLElement,
+  apiKey: string,
+  weather: WeatherResult,
+  loadVersion: number,
+) {
+  const [astroResult, dustResult] = await Promise.allSettled([
     getAstroTimes(apiKey),
     getDustData(apiKey),
-    getSeaForecastData(apiKey),
   ]);
 
-  const weather = await weatherPromise;
-  const [astroResult, dustResult, seaResult] = await auxiliaryPromise;
+  if (loadVersion !== weatherLoadVersion) return;
+
+  const hasUpdatedData =
+    astroResult.status === "fulfilled" || dustResult.status === "fulfilled";
+  if (!hasUpdatedData) return;
+
   const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;
   const dust =
     dustResult.status === "fulfilled" ? dustResult.value : createEmptyDustData();
-  const sea =
-    seaResult.status === "fulfilled"
-      ? seaResult.value
-      : createEmptySeaForecastData();
+
+  app.innerHTML = renderPage(weather, astro, dust);
+  bindLoadedPageInteractions(app, apiKey, weather.landOverviewText);
+}
+
+async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
+  const loadVersion = ++weatherLoadVersion;
+  const weather = await getWeatherData(apiKey);
 
   resetNotesIfDayChanged();
   latestWeatherSnapshot = weather;
   latestWeatherApiKey = apiKey;
   scheduleDailyElevenAmBaselineSave();
-  app.innerHTML = renderPage(weather, astro, dust);
-  bindPngDownload(app);
-  bindTodayNotePersistence(app);
-  bindWeatherRefresh(app, apiKey);
-  bindSettingsButton(app);
-  bindLandOverviewButton(app, weather.landOverviewText);
-  bindSeaForecastButton(app, sea);
+  app.innerHTML = renderPage(weather, EMPTY_ASTRO, createEmptyDustData());
+  bindLoadedPageInteractions(app, apiKey, weather.landOverviewText);
+  void hydrateAuxiliaryDataIntoApp(app, apiKey, weather, loadVersion);
 }
 
 function showEmptyShell(
@@ -921,7 +980,7 @@ function showEmptyShell(
   }
   bindSettingsButton(app);
   bindLandOverviewButton(app, "");
-  bindSeaForecastButton(app, createEmptySeaForecastData());
+  bindSeaForecastButton(app, { sea: createEmptySeaForecastData() });
 }
 
 function bindWeatherRefresh(container: HTMLElement, apiKey: string) {
@@ -1119,7 +1178,6 @@ function showApiKeyForm(app: HTMLElement, fetchError?: string) {
   showEmptyShell(app, "", { loadToolbarState: "loading", keylessPreview: true });
   app.insertAdjacentHTML("beforeend", renderApiKeyDialogHtml(saved, "fullscreen"));
   attachApiKeyFormHandlers(app, { app, mode: "fullscreen" }, fetchError);
-  warmupWeatherExportCanvas(app);
 }
 
 function openApiKeySettingsDialog(app: HTMLElement) {
