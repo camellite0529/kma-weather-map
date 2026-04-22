@@ -1,4 +1,5 @@
 import { getTargetDate } from "./kma";
+import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
 import dustRegionGroupsJson from "../../data/dust-region-groups.json";
 
 export type DustLevel = "좋음" | "보통" | "나쁨" | "매우 나쁨" | "unknown";
@@ -77,14 +78,6 @@ function extractForecastDate(item: DustForecastItem) {
   const match = raw.match(/(\d{4})[-./]?(\d{2})[-./]?(\d{2})/);
   if (!match) return null;
   return `${match[1]}-${match[2]}-${match[3]}`;
-}
-
-function normalizeServiceKey(rawKey: string) {
-  return rawKey.trim();
-}
-
-function isLikelyEncodedKey(value: string) {
-  return /%[0-9A-Fa-f]{2}/.test(value);
 }
 
 function normalizeDustLevel(text: string): KnownDustLevel {

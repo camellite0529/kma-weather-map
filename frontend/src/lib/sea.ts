@@ -1,4 +1,6 @@
-﻿const REQUEST_TIMEOUT_MS = 12000;
+﻿import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
+
+const REQUEST_TIMEOUT_MS = 12000;
 
 function kmaApiOrigin(): string {
   if (import.meta.env.DEV) {
@@ -135,14 +137,6 @@ type SeaRegionComputed = {
   minWave: number | null;
   maxWave: number | null;
 };
-
-function isLikelyEncodedKey(value: string) {
-  return /%[0-9A-Fa-f]{2}/.test(value);
-}
-
-function normalizeServiceKey(rawKey: string) {
-  return rawKey.trim();
-}
 
 function toFiniteNumber(value: unknown): number | null {
   const parsed = Number(value);

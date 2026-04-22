@@ -1,30 +1,14 @@
 import {
   MAP_CITIES,
   summarizeLandForecast,
-  mergeLandMorningAfternoonWeather,
+  dailyFromLandSlots,
   computeLandPublishHighlights,
   type City,
   type CityWeather,
   type DailyWeather,
   type LandFcstItem,
-  type LandSlotValue,
 } from "./kma";
-
-function toWeatherLabelLike(value: string | null) {
-  return value as
-    | "맑음"
-    | "구름조금"
-    | "구름많음"
-    | "흐림"
-    | "차차흐림"
-    | "흐린후갬"
-    | "비"
-    | "흐린후비"
-    | "비후갬"
-    | "눈"
-    | "비나눈"
-    | null;
-}
+import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
 
 function kmaApiOrigin(): string {
   if (import.meta.env.DEV) {
@@ -53,7 +37,6 @@ const NATIONAL_TEMP_RANGE_EXCLUDED_CITY_NAMES = new Set([
   "제주",
   "서귀포",
 ]);
-const NATIONAL_TEMP_RANGE_EXCLUDED_REG_IDS = new Set<string>([]);
 const NATIONAL_TEMP_RANGE_FORCE_INCLUDED_REG_IDS = new Set(["11D10501"]); // 영월
 const NATIONAL_TEMP_RANGE_FORCE_EXCLUDED_REG_IDS = new Set(["11D20201"]); // 대관령
 
@@ -62,9 +45,7 @@ type WeatherWarning = {
   message: string;
 };
 
-type WeatherCityData = CityWeather;
-
-type CityForecastResult = WeatherCityData & {
+type CityForecastResult = CityWeather & {
   announceTime: string | null;
 };
 
@@ -73,7 +54,7 @@ export type WeatherResult = {
   updatedAt: string;
   landOverviewText: string;
   tomorrowNationalTempRangeText: string;
-  data: WeatherCityData[];
+  data: CityWeather[];
   warnings: WeatherWarning[];
 };
 
@@ -89,9 +70,195 @@ type NationalTempRangeRow = {
   tomorrow: DailyWeather;
 };
 
-const NATIONAL_TEMP_RANGE_REQUIRED_ZONES: ForecastZone[] = [
-  { regId: "11D10501", regName: "영월", regSp: "C" },
-];
+const NATIONAL_TEMP_RANGE_REQUIRED_ZONE_LINES = `
+서울 11B10101
+인천 11B20201
+수원 11B20601
+성남 11B20605
+안양 11B20602
+광명 11B10103
+과천 11B10102
+평택 11B20606
+오산 11B20603
+의왕 11B20609
+용인 11B20612
+군포 11B20610
+안성 11B20611
+화성 11B20604
+양평 11B20503
+구리 11B20501
+남양주 11B20502
+하남 11B20504
+이천 11B20701
+여주 11B20703
+광주 11B20702
+의정부 11B20301
+고양 11B20302
+파주 11B20305
+양주 11B20304
+동두천 11B20401
+연천 11B20402
+포천 11B20403
+가평 11B20404
+강화 11B20101
+김포 11B20102
+시흥 11B20202
+부천 11B20204
+안산 11B20203
+백령도 11A00101
+부산 11H20201
+울산 11H20101
+김해 11H20304
+양산 11H20102
+창원 11H20301
+밀양 11H20601
+함안 11H20603
+창녕 11H20604
+의령 11H20602
+진주 11H20701
+하동 11H20704
+사천 11H20402
+거창 11H20502
+합천 11H20503
+산청 11H20703
+함양 11H20501
+통영 11H20401
+거제 11H20403
+고성 11H20404
+남해 11H20405
+대구 11H10701
+영천 11H10702
+경산 11H10703
+청도 11H10704
+칠곡 11H10705
+김천 11H10601
+구미 11H10602
+군위 11H10707
+고령 11H10604
+성주 11H10605
+안동 11H10501
+의성 11H10502
+청송 11H10503
+상주 11H10302
+문경 11H10301
+예천 11H10303
+영주 11H10401
+봉화 11H10402
+영양 11H10403
+울진 11H10101
+영덕 11H10102
+포항 11H10201
+경주 11H10202
+광주 11F20501
+나주 11F20503
+장성 11F20502
+담양 11F20504
+화순 11F20505
+영광 21F20102
+함평 21F20101
+목포 21F20801
+무안 21F20804
+영암 21F20802
+진도 21F20201
+신안 21F20803
+흑산도 11F20701
+순천 11F20603
+순천시 11F20405
+광양 11F20402
+구례 11F20601
+곡성 11F20602
+완도 11F20301
+강진 11F20303
+장흥 11F20304
+해남 11F20302
+여수 11F20401
+고흥 11F20403
+보성 11F20404
+전주 11F10201
+익산 11F10202
+군산 21F10501
+정읍 11F10203
+김제 21F10502
+남원 11F10401
+고창 21F10601
+무주 11F10302
+부안 21F10602
+순창 11F10403
+완주 11F10204
+임실 11F10402
+장수 11F10301
+진안 11F10303
+대전 11C20401
+세종 11C20404
+공주 11C20402
+논산 11C20602
+계룡 11C20403
+금산 11C20601
+천안 11C20301
+아산 11C20302
+예산 11C20303
+서산 11C20101
+태안 11C20102
+당진 11C20103
+홍성 11C20104
+보령 11C20201
+서천 11C20202
+청양 11C20502
+부여 11C20501
+청주 11C10301
+증평 11C10304
+괴산 11C10303
+진천 11C10102
+충주 11C10101
+음성 11C10103
+제천 11C10201
+단양 11C10202
+보은 11C10302
+옥천 11C10403
+영동 11C10402
+추풍령 11C10401
+철원 11D10101
+화천 11D10102
+인제 11D10201
+양구 11D10202
+춘천 11D10301
+홍천 11D10302
+원주 11D10401
+횡성 11D10402
+영월 11D10501
+정선 11D10502
+평창 11D10503
+대관령 11D20201
+속초 11D20401
+고성 11D20402
+양양 11D20403
+강릉 11D20501
+동해 11D20601
+삼척 11D20602
+태백 11D20301
+`;
+
+function parseRequiredNationalTempRangeZones(lines: string): ForecastZone[] {
+  const unique = new Map<string, ForecastZone>();
+  for (const rawLine of lines.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = line.match(/^(.+?)\s+([0-9]{2}[A-Z][0-9]{5})$/);
+    if (!match) continue;
+    const regName = match[1].trim();
+    const regId = match[2].trim();
+    if (isNationalTempRangeExcluded(regName, regId)) continue;
+    unique.set(regId, {
+      regId,
+      regName,
+      regSp: "C",
+    });
+  }
+  return [...unique.values()];
+}
+
+const NATIONAL_TEMP_RANGE_REQUIRED_ZONES: ForecastZone[] =
+  parseRequiredNationalTempRangeZones(NATIONAL_TEMP_RANGE_REQUIRED_ZONE_LINES);
 
 type StoredTomorrowRow = {
   city: string;
@@ -136,14 +303,6 @@ function writeLocalBaseline(payload: StoredMapHighlightBaseline) {
   } catch {
     // 로컬 저장 실패는 하이라이트 동작을 막지 않음
   }
-}
-
-function isLikelyEncodedKey(value: string) {
-  return /%[0-9A-Fa-f]{2}/.test(value);
-}
-
-function normalizeServiceKey(rawKey: string) {
-  return rawKey.trim();
 }
 
 async function fetchWithTimeout(url: string) {
@@ -208,7 +367,6 @@ function buildFcstZoneRequestUrl(serviceKey: string, pageNo: number): string {
 
 function isNationalTempRangeExcluded(cityName: string, regId: string): boolean {
   if (NATIONAL_TEMP_RANGE_EXCLUDED_CITY_NAMES.has(cityName)) return true;
-  if (NATIONAL_TEMP_RANGE_EXCLUDED_REG_IDS.has(regId)) return true;
   if (NATIONAL_TEMP_RANGE_FORCE_EXCLUDED_REG_IDS.has(regId)) return true;
   return false;
 }
@@ -359,11 +517,6 @@ function mergeNationalTempRangeRows(
   return [...unique.values()];
 }
 
-function requiredNationalTempRangeZones(): ForecastZone[] {
-  return NATIONAL_TEMP_RANGE_REQUIRED_ZONES.filter(
-    (zone) => !isNationalTempRangeExcluded(zone.regName, zone.regId),
-  );
-}
 
 async function fetchJsonWithValidation(url: string, cityName: string) {
   let res: Response;
@@ -425,43 +578,6 @@ async function fetchLandForecast(
   }
 
   return items;
-}
-
-function collectSlotTemperatures(slots: Array<LandSlotValue | undefined>) {
-  const values = slots
-    .map((slot) => slot?.ta)
-    .filter(
-      (value): value is number =>
-        typeof value === "number" && Number.isFinite(value),
-    );
-
-  return {
-    minTemp: values.length ? Math.min(...values) : null,
-    maxTemp: values.length ? Math.max(...values) : null,
-  };
-}
-
-function createDailyWeatherFromLand(
-  morning?: LandSlotValue,
-  afternoon?: LandSlotValue,
-): DailyWeather {
-  const amSky = morning?.label ?? null;
-  const pmSky = afternoon?.label ?? null;
-  const { minTemp, maxTemp } = collectSlotTemperatures([morning, afternoon]);
-
-  return {
-    minTemp,
-    maxTemp,
-    sky:
-      mergeLandMorningAfternoonWeather(
-        toWeatherLabelLike(amSky),
-        toWeatherLabelLike(pmSky),
-      ) ?? pmSky ?? amSky,
-    amSky,
-    pmSky,
-    amPop: morning?.rnSt ?? null,
-    pmPop: afternoon?.rnSt ?? null,
-  };
 }
 
 function isDifferentNumber(
@@ -561,7 +677,7 @@ function parseTomorrowNationalTempRangeFromOverview(
   };
 }
 
-function toDefaultNationalTempRangeRows(rows: WeatherCityData[]): NationalTempRangeRow[] {
+function toDefaultNationalTempRangeRows(rows: CityWeather[]): NationalTempRangeRow[] {
   const unique = new Map<string, NationalTempRangeRow>();
   for (const row of rows) {
     const regId = MAP_CITY_REG_ID_BY_NAME.get(row.city);
@@ -594,12 +710,26 @@ async function fetchNationalTempRangeSupplementRows(
         lat: 0,
         lon: 0,
       };
-      const items = await fetchLandForecast(serviceKey, pseudoCity);
+      let items: LandFcstItem[] | null = null;
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          items = await fetchLandForecast(serviceKey, pseudoCity);
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (!items) {
+        throw (lastError instanceof Error
+          ? lastError
+          : new Error(`${zone.regName} 통보문 데이터 조회 실패`));
+      }
       const land = summarizeLandForecast(items);
       return {
         city: zone.regName,
         regId: zone.regId,
-        tomorrow: createDailyWeatherFromLand(land.tomorrowAm, land.tomorrowPm),
+        tomorrow: dailyFromLandSlots(land.tomorrowAm, land.tomorrowPm),
       } satisfies NationalTempRangeRow;
     },
   );
@@ -611,10 +741,10 @@ async function fetchNationalTempRangeSupplementRows(
 
 async function collectNationalTempRangeRows(
   serviceKey: string,
-  rows: WeatherCityData[],
+  rows: CityWeather[],
 ): Promise<NationalTempRangeRow[]> {
   const defaultRows = toDefaultNationalTempRangeRows(rows);
-  const requiredZones = requiredNationalTempRangeZones();
+  const requiredZones = NATIONAL_TEMP_RANGE_REQUIRED_ZONES;
 
   const defaultRegIds = new Set(defaultRows.map((row) => row.regId));
   const requiredRows = await fetchNationalTempRangeSupplementRows(
@@ -651,7 +781,7 @@ async function collectNationalTempRangeRows(
 }
 
 function buildTomorrowNationalTempRangeText(
-  rows: WeatherCityData[],
+  rows: CityWeather[],
   nationalRangeRows: NationalTempRangeRow[],
   landOverviewText: string,
 ): string {
@@ -728,15 +858,15 @@ async function fetchCityForecast(
 ): Promise<CityForecastResult> {
   const items = await fetchLandForecast(serviceKey, city);
   const land = summarizeLandForecast(items);
-  const tomorrow = createDailyWeatherFromLand(
+  const tomorrow = dailyFromLandSlots(
     land.tomorrowAm,
     land.tomorrowPm,
   );
-  const dayAfterTomorrow = createDailyWeatherFromLand(
+  const dayAfterTomorrow = dailyFromLandSlots(
     land.day2Am,
     land.day2Pm,
   );
-  const threeDaysLater = createDailyWeatherFromLand(
+  const threeDaysLater = dailyFromLandSlots(
     land.day3Am,
     land.day3Pm,
   );
@@ -773,7 +903,6 @@ async function readStoredMapBaseline(
       payload?: StoredMapHighlightBaseline | null;
     };
     const parsed = json.payload ?? null;
-    if (!parsed) return readLocalBaseline(baseDate);
     if (!parsed || typeof parsed.date !== "string" || !Array.isArray(parsed.rows)) {
       return readLocalBaseline(baseDate);
     }
@@ -785,7 +914,7 @@ async function readStoredMapBaseline(
 
 async function writeStoredMapBaseline(
   baseDate: string,
-  rows: WeatherCityData[],
+  rows: CityWeather[],
   apiKey: string,
 ) {
   if (typeof window === "undefined") return;
@@ -828,11 +957,11 @@ export async function persistElevenAmBaselineSnapshot(
 }
 
 async function applyStoredMapHighlights(
-  rows: WeatherCityData[],
+  rows: CityWeather[],
   baseDate: string,
   baseTime: string,
   apiKey: string,
-): Promise<WeatherCityData[]> {
+): Promise<CityWeather[]> {
   const stored = await readStoredMapBaseline(baseDate, apiKey);
   const sameDateBaseline = stored && stored.date === baseDate ? stored : null;
   const previousByCity = sameDateBaseline
@@ -979,7 +1108,7 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
   }
 
   const latestBase = latestAnnounceTime(data);
-  const weatherData: WeatherCityData[] = data.map(
+  const weatherData: CityWeather[] = data.map(
     ({ announceTime: _announceTime, ...rest }) => rest,
   );
   const base = summarizeBase(latestBase);

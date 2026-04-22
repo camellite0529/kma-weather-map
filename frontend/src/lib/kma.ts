@@ -142,7 +142,7 @@ function rnYnToWeatherLabel(
   return null;
 }
 
-export function landSlotToWeatherLabel(slot: {
+function landSlotToWeatherLabel(slot: {
   rnYn?: string | number | null;
   wfCd?: string | null;
 }): WeatherLabel | null {
@@ -326,24 +326,7 @@ export function summarizeLandForecast(items: LandFcstItem[]): LandSummary {
   return summary;
 }
 
-function serializeLandFcstComparePayload(item: LandFcstItem): string {
-  const wf = item.wf ?? "";
-  const wfCd = item.wfCd ?? "";
-  const ta = item.ta ?? "";
-  const rnSt = item.rnSt ?? "";
-  const rnYn = item.rnYn ?? "";
-  return `${wf}|${wfCd}|${ta}|${rnSt}|${rnYn}`;
-}
-
-/** 육상 통보문 비교 키 (regId + numEf). */
-export function landFcstCompareKey(
-  regId: string,
-  numEf: string | number,
-): string {
-  return `${regId}_${String(numEf)}`;
-}
-
-export function getTwoLatestAnnounceTimesFromItems(
+function getTwoLatestAnnounceTimesFromItems(
   items: LandFcstItem[],
 ): { previous: string; latest: string } | null {
   const times = new Set(
@@ -381,19 +364,6 @@ export function getTwoLatestAnnounceTimesFromItems(
   };
 }
 
-function buildLandCompareMap(
-  items: LandFcstItem[],
-  regIdFallback: string,
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const item of items) {
-    const reg = String(item.regId ?? regIdFallback).trim() || regIdFallback;
-    const key = landFcstCompareKey(reg, item.numEf);
-    map.set(key, serializeLandFcstComparePayload(item));
-  }
-  return map;
-}
-
 function collectNumEfsForSlots(
   announceTime: string,
   slots: ReadonlyArray<keyof Omit<LandSummary, "announceTime">>,
@@ -421,7 +391,7 @@ function collectSlotTemperatures(slots: Array<LandSlotValue | undefined>) {
   };
 }
 
-function dailyFromLandSlots(
+export function dailyFromLandSlots(
   morning?: LandSlotValue,
   afternoon?: LandSlotValue,
 ): DailyWeather {
