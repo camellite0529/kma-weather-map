@@ -1,4 +1,5 @@
 import "./styles/page.css";
+import { getTodayNote, saveTodayNote } from "./lib/today-note";
 import "./styles/map.css";
 import html2canvas from "html2canvas";
 import {
@@ -34,8 +35,6 @@ const LEGACY_KEYS = [
   "kma_weather_air_key",
   "kma_weather_kasi_key",
 ] as const;
-const STORAGE_NOTE_TITLE = "kma_weather_note_title";
-const STORAGE_NOTE_BODY = "kma_weather_note_body";
 const STORAGE_NOTE_DATE = "kma_weather_note_date";
 const KST_TIMEZONE = "Asia/Seoul";
 const BASELINE_TIMER_HOUR = 11;
@@ -44,6 +43,9 @@ const BASELINE_TIMER_MINUTE = 30;
 let latestWeatherSnapshot: WeatherResult | null = null;
 let latestWeatherApiKey: string | null = null;
 let baselineSaveTimerId: number | null = null;
+let noteSaveTimerId: number | null = null;
+let currentNoteTitle = "";
+let currentNoteBody = "";
 
 /** 춘천–강릉, 세종–청주, 전주–부산 구간처럼 묶음 경계(해당 행 위 가로선을 굵게) */
 const PRECIP_STRONG_DIVIDER_BEFORE_CITY = new Set(["강릉", "청주", "부산"]);
@@ -132,8 +134,15 @@ async function syncApiKeyToServer(apiKey: string): Promise<void> {
 }
 
 function getTodayDateString(): string {
-  const today = new Date();
-  return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: KST_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const pick = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+  return `${pick("year")}${pick("month")}${pick("day")}`;
 }
 
 function resetNotesIfDayChanged(): void {
@@ -141,9 +150,8 @@ function resetNotesIfDayChanged(): void {
   const lastNoteDate = localStorage.getItem(STORAGE_NOTE_DATE);
   
   if (lastNoteDate !== today) {
-    // Day has changed, reset the notes
-    localStorage.removeItem(STORAGE_NOTE_TITLE);
-    localStorage.removeItem(STORAGE_NOTE_BODY);
+    currentNoteTitle = "";
+    currentNoteBody = "";
     localStorage.setItem(STORAGE_NOTE_DATE, today);
   }
 }
@@ -399,8 +407,8 @@ function renderPage(
   dust: DustData,
   loadToolbarState: DataLoadToolbarState = "complete",
 ) {
-  const noteTitle = localStorage.getItem(STORAGE_NOTE_TITLE) ?? "";
-  const noteBody = localStorage.getItem(STORAGE_NOTE_BODY) ?? "";
+  const noteTitle = currentNoteTitle;
+  const noteBody = currentNoteBody;
 
   const weatherByCity = new Map(weather.data.map((item) => [item.city, item]));
   const tableRows = TABLE_CITIES.map((city) => weatherByCity.get(city)).filter(
@@ -870,10 +878,11 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
     getAstroTimes(apiKey),
     getDustData(apiKey),
     getSeaForecastData(apiKey),
+    getTodayNote(apiKey, getTodayDateString()),
   ]);
 
   const weather = await weatherPromise;
-  const [astroResult, dustResult, seaResult] = await auxiliaryPromise;
+  const [astroResult, dustResult, seaResult, noteResult] = await auxiliaryPromise;
   const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;
   const dust =
     dustResult.status === "fulfilled" ? dustResult.value : createEmptyDustData();
@@ -883,6 +892,13 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
       : createEmptySeaForecastData();
 
   resetNotesIfDayChanged();
+  if (noteResult.status === "fulfilled" && noteResult.value) {
+    currentNoteTitle = noteResult.value.title;
+    currentNoteBody = noteResult.value.body;
+  } else {
+    currentNoteTitle = "";
+    currentNoteBody = "";
+  }
   latestWeatherSnapshot = weather;
   latestWeatherApiKey = apiKey;
   scheduleDailyElevenAmBaselineSave();
@@ -902,6 +918,8 @@ function showEmptyShell(
 ) {
   const loadToolbarState = options?.loadToolbarState ?? "complete";
   resetNotesIfDayChanged();
+  currentNoteTitle = "";
+  currentNoteBody = "";
   app.innerHTML = renderPage(
     createEmptyWeatherResult(),
     EMPTY_ASTRO,
@@ -978,9 +996,23 @@ function bindTodayNotePersistence(container: HTMLElement) {
   if (!titleEl || !bodyEl) return;
 
   const save = () => {
-    localStorage.setItem(STORAGE_NOTE_TITLE, titleEl.value);
-    localStorage.setItem(STORAGE_NOTE_BODY, bodyEl.value);
+    const title = titleEl.value;
+    const body = bodyEl.value;
+    currentNoteTitle = title;
+    currentNoteBody = body;
     localStorage.setItem(STORAGE_NOTE_DATE, getTodayDateString());
+
+    if (!latestWeatherApiKey) return;
+    if (noteSaveTimerId != null) {
+      window.clearTimeout(noteSaveTimerId);
+    }
+    noteSaveTimerId = window.setTimeout(async () => {
+      try {
+        await saveTodayNote(latestWeatherApiKey!, title, body);
+      } catch (error) {
+        console.error("Failed to save today note:", error);
+      }
+    }, 350);
   };
   titleEl.addEventListener("input", save);
   bodyEl.addEventListener("input", save);
