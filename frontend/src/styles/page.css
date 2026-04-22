@@ -79,7 +79,7 @@
 
 .api-key-dialog h2 {
   margin: 0 0 8px;
-  font-size: 1.25rem;
+  font-size: 1.0rem;
 }
 
 .api-key-hint {
@@ -386,10 +386,13 @@ body {
 
 .today-note-save-btn {
   flex: 0 0 auto;
-  height: 9mm;
-  padding: 0 3.2mm;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 6.2mm;
+  padding: 0 2.2mm;
   border: none;
-  border-radius: 1.6mm;
+  border-radius: 999px;
   background: #e5e7eb;
   color: #4b5563;
   font-family: inherit;

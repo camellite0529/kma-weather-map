@@ -1035,7 +1035,7 @@ function renderApiKeyDialogHtml(saved: string, variant: "fullscreen" | "settings
       <div class="api-key-dialog" role="dialog" aria-modal="true" aria-labelledby="api-key-title">
         <h2 id="api-key-title">API 키 입력</h2>
         <p class="api-key-hint">
-          관리자는 공공데이터포털에서 (기상청)단기예보 통보문 조회서비스, (한국천문연구원)출몰시각 정보, (한국환경공단)에어코리아_대기오염정보 활용신청 뒤 '일반 인증키'를 재발급받아 동일한 서비스 키로 운영하세요. 인증키는 이 브라우저의 localStorage에 저장됩니다.
+          관리자는 공공데이터포털에서 (기상청)단기예보 통보문 조회서비스, (한국천문연구원)출몰시각 정보, (한국환경공단)에어코리아_대기오염정보 활용신청 뒤 '일반 인증키'를 재발급받아 같은 키로 운영하세요. 사회부 전체가 같은 키 공유 필요. 인증키는 각 브라우저에 저장됩니다.
         </p>
         <form id="api-key-form">
           <div class="api-key-field">
