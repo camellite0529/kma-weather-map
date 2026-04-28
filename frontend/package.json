@@ -11,10 +11,12 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/suncalc": "^1.9.2",
     "html2canvas": "^1.4.1",
     "vite": "^6.0.7"
   },
   "dependencies": {
-    "@upstash/redis": "^1.37.0"
+    "@upstash/redis": "^1.37.0",
+    "suncalc": "^1.9.0"
   }
 }
