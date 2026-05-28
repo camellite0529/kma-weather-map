@@ -218,6 +218,26 @@
   color: #7f1d1d;
 }
 
+.data-load-spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fca5a5;
+  border-top-color: #7f1d1d;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+#data-load-status[data-state="loading"] .data-load-spinner {
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 #data-load-status[data-state="complete"] .data-load-status-label {
   color: #15803d;
 }

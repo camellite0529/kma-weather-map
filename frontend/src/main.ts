@@ -507,6 +507,7 @@ function renderPage(
           aria-live="polite"
         >
           <span class="data-load-status-label">${loadStatusLabel}</span>
+          <span class="data-load-spinner" aria-hidden="true"></span>
         </div>
         <div class="sheet-toolbar-actions">
           <button type="button" class="weather-refresh-btn" id="weather-refresh-btn">

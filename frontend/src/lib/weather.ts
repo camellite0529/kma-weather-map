@@ -751,7 +751,19 @@ async function fetchCityForecast(
   serviceKey: string,
   city: City,
 ): Promise<CityForecastResult> {
-  const items = await fetchLandForecast(serviceKey, city);
+  let items: LandFcstItem[] | null = null;
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      items = await fetchLandForecast(serviceKey, city);
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!items) {
+    throw lastError instanceof Error ? lastError : new Error(`${city.name} 데이터 조회 실패`);
+  }
   const land = summarizeLandForecast(items);
   const tomorrow = dailyFromLandSlots(
     land.tomorrowAm,
