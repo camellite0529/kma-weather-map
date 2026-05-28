@@ -878,23 +878,18 @@ function bindPngDownload(container: HTMLElement) {
 }
 
 async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
-  const weatherPromise = getWeatherData(apiKey);
-  const auxiliaryPromise = Promise.allSettled([
-    getAstroTimes(apiKey),
-    getDustData(apiKey),
-    getSeaForecastData(apiKey),
-    getTodayNote(apiKey, getTodayDateString()),
-  ]);
+  const [weatherResult, astroResult, dustResult, seaResult, noteResult] =
+    await Promise.allSettled([
+      getWeatherData(apiKey),
+      getAstroTimes(apiKey),
+      getDustData(apiKey),
+      getSeaForecastData(apiKey),
+      getTodayNote(apiKey, getTodayDateString()),
+    ]);
 
-  const weather = await weatherPromise;
-  const [astroResult, dustResult, seaResult, noteResult] = await auxiliaryPromise;
   const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;
-  const dust =
-    dustResult.status === "fulfilled" ? dustResult.value : createEmptyDustData();
-  const sea =
-    seaResult.status === "fulfilled"
-      ? seaResult.value
-      : createEmptySeaForecastData();
+  const dust = dustResult.status === "fulfilled" ? dustResult.value : createEmptyDustData();
+  const sea = seaResult.status === "fulfilled" ? seaResult.value : createEmptySeaForecastData();
 
   resetNotesIfDayChanged();
   if (noteResult.status === "fulfilled" && noteResult.value) {
@@ -904,10 +899,32 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
     currentNoteTitle = "";
     currentNoteBody = "";
   }
-  latestWeatherSnapshot = weather;
-  latestWeatherApiKey = apiKey;
-  scheduleDailyElevenAmBaselineSave();
-  app.innerHTML = renderPage(weather, astro, dust);
+
+  let weather: WeatherResult;
+  let toolbarState: DataLoadToolbarState = "complete";
+
+  if (weatherResult.status === "rejected") {
+    // astro·dust 중 하나라도 성공했으면 API 키는 유효 → 날씨만 실패한 것
+    const anyAuxSucceeded =
+      astroResult.status === "fulfilled" || dustResult.status === "fulfilled";
+    if (!anyAuxSucceeded) {
+      // 모두 실패 → API 키 문제일 가능성이 높으므로 throw하여 키 입력 폼 표시
+      throw weatherResult.reason;
+    }
+    const message =
+      weatherResult.reason instanceof Error
+        ? weatherResult.reason.message
+        : "날씨 정보를 불러오지 못했습니다.";
+    weather = { ...createEmptyWeatherResult(), warnings: [{ city: "날씨", message }] };
+    toolbarState = "error";
+  } else {
+    weather = weatherResult.value;
+    latestWeatherSnapshot = weather;
+    latestWeatherApiKey = apiKey;
+    scheduleDailyElevenAmBaselineSave();
+  }
+
+  app.innerHTML = renderPage(weather, astro, dust, toolbarState);
   bindPngDownload(app);
   bindTodayNotePersistence(app);
   bindWeatherRefresh(app, apiKey);
