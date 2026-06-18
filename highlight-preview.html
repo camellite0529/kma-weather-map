@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하이라이트 스타일 Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+    background: #f0f0f0;
+    padding: 24px;
+    color: #222;
+  }
+  h1 { font-size: 18px; margin-bottom: 24px; color: #333; }
+  .sections { display: flex; flex-direction: column; gap: 32px; }
+
+  /* ── Section wrapper ── */
+  .section { background: #fff; border-radius: 10px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .section-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .col-label { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+
+  /* ─────────────────────────────────────
+     1. 일출/일몰 astro-card
+  ───────────────────────────────────── */
+  .astro-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .astro-row { display: flex; align-items: center; gap: 8px; }
+  .astro-icon { font-size: 15px; width: 20px; }
+  .astro-label { color: #666; font-size: 12px; }
+  .astro-label-right { margin-left: auto; }
+  .astro-time { font-weight: 700; color: #222; white-space: nowrap; }
+  .astro-time.astro-value-changed { color: #b91c1c; }
+
+  /* ─────────────────────────────────────
+     2. 지도 마커
+  ───────────────────────────────────── */
+  .marker-demo { display: flex; gap: 16px; flex-wrap: wrap; }
+  .map-marker-mock {
+    background: rgba(255,255,255,.95);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    min-width: 90px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  }
+  .marker-weather { font-size: 12px; color: #444; }
+  .marker-weather.marker-value-changed { color: #b91c1c; font-weight: 800; }
+  .marker-line { display: flex; gap: 5px; align-items: center; font-size: 11px; margin-top: 2px; }
+  .marker-city { font-weight: 800; }
+  .marker-temp { color: #333; }
+  .marker-value-changed { color: #b91c1c; font-weight: 800; }
+
+  /* ─────────────────────────────────────
+     3. 강수확률
+  ───────────────────────────────────── */
+  .precip-row-item {
+    display: grid;
+    grid-template-columns: 28px 1fr 52px;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 12px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .precip-row-item:first-child { border-top: none; }
+  .precip-label { font-size: 11px; color: #444; }
+  .precip-track {
+    position: relative;
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .precip-bar-am {
+    position: absolute; left: 0; top: 0; height: 100%;
+    background: #6baed6; border-radius: 3px 0 0 3px;
+  }
+  .precip-bar-pm {
+    position: absolute; left: 0; top: 0; height: 100%;
+    background: #2171b5; border-radius: 3px 0 0 3px;
+    margin-top: 0;
+  }
+  .precip-values { display: flex; flex-direction: column; gap: 1px; align-items: flex-end; font-size: 11px; }
+  .precip-value { display: inline-block; min-width: 28px; text-align: right; }
+  .precip-value-am { color: #2c7bb6; }
+  .precip-value-pm { color: #1a4f7d; }
+  .precip-value-changed {
+    background-color: #fee2e2;
+    border-radius: 2px;
+    padding: 0 2px;
+    color: #b91c1c;
+    font-weight: 700;
+  }
+  .precip-card-mock {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .precip-card-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: #333; }
+
+  /* ─────────────────────────────────────
+     4. 예보 테이블
+  ───────────────────────────────────── */
+  .forecast-table { font-size: 12px; }
+  .forecast-table-title { font-size: 12px; font-weight: 700; color: #333; margin-bottom: 6px; }
+  .forecast-table-grid { width: 100%; border-collapse: collapse; }
+  .forecast-table-grid th,
+  .forecast-table-grid td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12px;
+    color: #333;
+  }
+  .forecast-table-grid th { color: #666; font-weight: 600; font-size: 11px; }
+  .forecast-value-changed {
+    background-color: #fee2e2;
+    border-radius: 2px;
+    padding: 0 3px;
+    font-weight: 700;
+    color: #b91c1c;
+  }
+
+  /* ─────────────────────────────────────
+     5. 미세먼지
+  ───────────────────────────────────── */
+  .dust-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dust-cell-mock { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 48px; }
+  .dust-col-head { font-size: 10px; color: #666; text-align: center; }
+  .dust-grade {
+    font-size: 12px; font-weight: 600; padding: 2px 6px;
+    border-radius: 3px; text-align: center; min-width: 36px;
+  }
+  .dust-grade-good    { background: #d1fae5; color: #065f46; }
+  .dust-grade-normal  { background: #fef9c3; color: #713f12; }
+  .dust-grade-bad     { background: #fed7aa; color: #9a3412; }
+  .dust-grade-verybad { background: #fecaca; color: #7f1d1d; }
+  .dust-grade.dust-grade-bg-changed { font-weight: 700; outline: 2px solid #b91c1c; outline-offset: 1px; }
+
+  /* badge */
+  .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  .badge-normal { background: #f0f0f0; color: #666; }
+  .badge-changed { background: #fee2e2; color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<h1>11시 → 17시 변경 하이라이트 스타일 Preview</h1>
+
+<div class="sections">
+
+  <!-- ① 일출/일몰 -->
+  <div class="section">
+    <div class="section-title">① 일출 / 일몰 · 달뜸 / 달짐 <code>astro-value-changed</code></div>
+    <div class="compare">
+      <div>
+        <div class="col-label">변경 없음 (기본)</div>
+        <div class="astro-card">
+          <div class="astro-row">
+            <span class="astro-icon">☀</span>
+            <span class="astro-label">해뜸</span>
+            <span class="astro-time">05:11</span>
+            <span class="astro-label astro-label-right">해짐</span>
+            <span class="astro-time">19:42</span>
+          </div>
+          <div class="astro-row">
+            <span class="astro-icon">☾</span>
+            <span class="astro-label">달뜸</span>
+            <span class="astro-time">14:07</span>
+            <span class="astro-label astro-label-right">달짐</span>
+            <span class="astro-time">01:23</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">변경됨 (17시 발표에서 값 바뀜)</div>
+        <div class="astro-card">
+          <div class="astro-row">
+            <span class="astro-icon">☀</span>
+            <span class="astro-label">해뜸</span>
+            <span class="astro-time astro-value-changed">05:09</span>
+            <span class="astro-label astro-label-right">해짐</span>
+            <span class="astro-time">19:42</span>
+          </div>
+          <div class="astro-row">
+            <span class="astro-icon">☾</span>
+            <span class="astro-label">달뜸</span>
+            <span class="astro-time">14:07</span>
+            <span class="astro-label astro-label-right">달짐</span>
+            <span class="astro-time astro-value-changed">01:55</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:#555;">
+      스타일: <span class="badge badge-changed">color: #b91c1c</span> — 배경 없음, 빨간 글씨
+    </div>
+  </div>
+
+  <!-- ② 지도 마커 -->
+  <div class="section">
+    <div class="section-title">② 지도 마커 <code>marker-value-changed</code></div>
+    <div class="compare">
+      <div>
+        <div class="col-label">변경 없음 (기본)</div>
+        <div class="marker-demo">
+          <div class="map-marker-mock">
+            <div class="marker-weather">맑음</div>
+            <div class="marker-line">
+              <strong class="marker-city">서울</strong>
+              <span class="marker-temp">18° / 27°</span>
+            </div>
+          </div>
+          <div class="map-marker-mock">
+            <div class="marker-weather">구름많음</div>
+            <div class="marker-line">
+              <strong class="marker-city">부산</strong>
+              <span class="marker-temp">22° / 29°</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">변경됨 (날씨 · 기온 모두 바뀜)</div>
+        <div class="marker-demo">
+          <div class="map-marker-mock">
+            <div class="marker-weather marker-value-changed">흐림</div>
+            <div class="marker-line">
+              <strong class="marker-city">서울</strong>
+              <span class="marker-temp">
+                <span class="marker-value-changed">16°</span> / <span class="marker-value-changed">25°</span>
+              </span>
+            </div>
+          </div>
+          <div class="map-marker-mock">
+            <div class="marker-weather">구름많음</div>
+            <div class="marker-line">
+              <strong class="marker-city">부산</strong>
+              <span class="marker-temp">22° / <span class="marker-value-changed">31°</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:#555;">
+      스타일: <span class="badge badge-changed">color: #b91c1c · font-weight: 800</span> — 배경 없음, 빨간 굵은 글씨
+    </div>
+  </div>
+
+  <!-- ③ 강수확률 -->
+  <div class="section">
+    <div class="section-title">③ 강수확률 차트 <code>precip-value-changed</code></div>
+    <div class="compare">
+      <div>
+        <div class="col-label">변경 없음 (기본)</div>
+        <div class="precip-card-mock">
+          <div class="precip-card-title">눈·비올 확률(%)</div>
+          <div class="precip-row-item">
+            <div class="precip-label">서울</div>
+            <div class="precip-track"><span class="precip-bar-am" style="width:30%; background:#6baed6; height:100%; position:absolute;"></span></div>
+            <div class="precip-values">
+              <span class="precip-value precip-value-am">30%</span>
+              <span class="precip-value precip-value-pm">10%</span>
+            </div>
+          </div>
+          <div class="precip-row-item">
+            <div class="precip-label">인천</div>
+            <div class="precip-track"><span class="precip-bar-pm" style="width:60%; background:#2171b5; height:100%; position:absolute;"></span></div>
+            <div class="precip-values">
+              <span class="precip-value precip-value-am">20%</span>
+              <span class="precip-value precip-value-pm">60%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">변경됨 (17시 발표에서 값 바뀜)</div>
+        <div class="precip-card-mock">
+          <div class="precip-card-title">눈·비올 확률(%)</div>
+          <div class="precip-row-item">
+            <div class="precip-label">서울</div>
+            <div class="precip-track"><span style="width:50%; background:#6baed6; height:100%; position:absolute;"></span></div>
+            <div class="precip-values">
+              <span class="precip-value precip-value-am precip-value-changed">50%</span>
+              <span class="precip-value precip-value-pm">10%</span>
+            </div>
+          </div>
+          <div class="precip-row-item">
+            <div class="precip-label">인천</div>
+            <div class="precip-track"><span style="width:80%; background:#2171b5; height:100%; position:absolute;"></span></div>
+            <div class="precip-values">
+              <span class="precip-value precip-value-am">20%</span>
+              <span class="precip-value precip-value-pm precip-value-changed">80%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:#555;">
+      스타일: <span class="badge badge-changed">bg: #fee2e2 · color: #b91c1c · font-weight: 700</span> — 연한 붉은 배경 + 빨간 굵은 글씨
+    </div>
+  </div>
+
+  <!-- ④ 예보 테이블 -->
+  <div class="section">
+    <div class="section-title">④ 예보 테이블 (모레 / 3일 후) <code>forecast-value-changed</code></div>
+    <div class="compare">
+      <div>
+        <div class="col-label">변경 없음 (기본)</div>
+        <div class="forecast-table">
+          <div class="forecast-table-title">모레 (6/19)</div>
+          <table class="forecast-table-grid">
+            <tbody>
+              <tr><th>서울</th><td>맑음</td><td><span>17°</span> / <span>28°</span></td></tr>
+              <tr><th>부산</th><td>구름많음</td><td><span>21°</span> / <span>30°</span></td></tr>
+              <tr><th>대구</th><td>맑음</td><td><span>19°</span> / <span>32°</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">변경됨 (날씨·기온 일부 바뀜)</div>
+        <div class="forecast-table">
+          <div class="forecast-table-title">모레 (6/19)</div>
+          <table class="forecast-table-grid">
+            <tbody>
+              <tr>
+                <th>서울</th>
+                <td><span class="forecast-value-changed">흐림</span></td>
+                <td><span class="forecast-value-changed">15°</span> / <span>28°</span></td>
+              </tr>
+              <tr>
+                <th>부산</th>
+                <td><span>구름많음</span></td>
+                <td><span>21°</span> / <span class="forecast-value-changed">33°</span></td>
+              </tr>
+              <tr>
+                <th>대구</th>
+                <td><span class="forecast-value-changed">구름많음</span></td>
+                <td><span class="forecast-value-changed">17°</span> / <span class="forecast-value-changed">29°</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:#555;">
+      스타일: <span class="badge badge-changed">bg: #fee2e2 · color: #b91c1c · font-weight: 700</span> — 연한 붉은 배경 + 빨간 굵은 글씨
+    </div>
+  </div>
+
+  <!-- ⑤ 미세먼지 -->
+  <div class="section">
+    <div class="section-title">⑤ 미세먼지 등급 <code>dust-grade-bg-changed</code></div>
+    <div class="compare">
+      <div>
+        <div class="col-label">변경 없음 (기본)</div>
+        <div class="dust-grid">
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">수도권</div>
+            <span class="dust-grade dust-grade-normal">보통</span>
+          </div>
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">강원</div>
+            <span class="dust-grade dust-grade-good">좋음</span>
+          </div>
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">호남</div>
+            <span class="dust-grade dust-grade-bad">나쁨</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">변경됨 (17시 발표에서 등급 바뀜)</div>
+        <div class="dust-grid">
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">수도권</div>
+            <span class="dust-grade dust-grade-bad dust-grade-bg-changed">나쁨</span>
+          </div>
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">강원</div>
+            <span class="dust-grade dust-grade-good">좋음</span>
+          </div>
+          <div class="dust-cell-mock">
+            <div class="dust-col-head">호남</div>
+            <span class="dust-grade dust-grade-verybad dust-grade-bg-changed">매우나쁨</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:#555;">
+      스타일: <span class="badge badge-changed">font-weight: 700 · outline: 2px solid #b91c1c</span> — 기존 배경색 유지 + 빨간 테두리 강조 (글씨만 굵어짐)
+    </div>
+  </div>
+
+  <!-- 색상 범례 -->
+  <div class="section" style="background:#fff8f8; border:1px solid #fecaca;">
+    <div class="section-title" style="color:#b91c1c;">색상 통일 요약</div>
+    <table style="font-size:12px; border-collapse:collapse; width:100%;">
+      <thead>
+        <tr style="background:#fee2e2;">
+          <th style="padding:6px 10px; text-align:left; font-weight:700;">위치</th>
+          <th style="padding:6px 10px; text-align:left; font-weight:700;">CSS 클래스</th>
+          <th style="padding:6px 10px; text-align:left; font-weight:700;">배경</th>
+          <th style="padding:6px 10px; text-align:left; font-weight:700;">글씨색</th>
+          <th style="padding:6px 10px; text-align:left; font-weight:700;">굵기</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-top:1px solid #fee2e2;">
+          <td style="padding:5px 10px;">일출/일몰</td>
+          <td style="padding:5px 10px;"><code>astro-value-changed</code></td>
+          <td style="padding:5px 10px;">없음</td>
+          <td style="padding:5px 10px;"><span style="color:#b91c1c; font-weight:700;">#b91c1c</span></td>
+          <td style="padding:5px 10px;">700 (기존)</td>
+        </tr>
+        <tr style="border-top:1px solid #fee2e2;">
+          <td style="padding:5px 10px;">지도 마커</td>
+          <td style="padding:5px 10px;"><code>marker-value-changed</code></td>
+          <td style="padding:5px 10px;">없음</td>
+          <td style="padding:5px 10px;"><span style="color:#b91c1c; font-weight:700;">#b91c1c</span></td>
+          <td style="padding:5px 10px;">800</td>
+        </tr>
+        <tr style="border-top:1px solid #fee2e2; background:#fff5f5;">
+          <td style="padding:5px 10px;">강수확률 ✦ 변경됨</td>
+          <td style="padding:5px 10px;"><code>precip-value-changed</code></td>
+          <td style="padding:5px 10px;"><span style="background:#fee2e2; padding:1px 6px; border-radius:3px;">#fee2e2</span></td>
+          <td style="padding:5px 10px;"><span style="color:#b91c1c; font-weight:700;">#b91c1c</span></td>
+          <td style="padding:5px 10px;">700</td>
+        </tr>
+        <tr style="border-top:1px solid #fee2e2; background:#fff5f5;">
+          <td style="padding:5px 10px;">예보 테이블 ✦ 변경됨</td>
+          <td style="padding:5px 10px;"><code>forecast-value-changed</code></td>
+          <td style="padding:5px 10px;"><span style="background:#fee2e2; padding:1px 6px; border-radius:3px;">#fee2e2</span></td>
+          <td style="padding:5px 10px;"><span style="color:#b91c1c; font-weight:700;">#b91c1c</span></td>
+          <td style="padding:5px 10px;">700</td>
+        </tr>
+        <tr style="border-top:1px solid #fee2e2;">
+          <td style="padding:5px 10px;">미세먼지</td>
+          <td style="padding:5px 10px;"><code>dust-grade-bg-changed</code></td>
+          <td style="padding:5px 10px;">기존 등급 배경 유지</td>
+          <td style="padding:5px 10px;">기존 유지</td>
+          <td style="padding:5px 10px;">700</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

@@ -381,7 +381,7 @@ function renderCompactDayTable(
       return `
     <tr>
       <th scope="row">${escapeHtml(row.city)}</th>
-      <td${skyCls ? ` class="${skyCls}"` : ""}>${escapeHtml(row[kind].sky ?? "-")}</td>
+      <td><span${skyCls ? ` class="${skyCls}"` : ""}>${escapeHtml(row[kind].sky ?? "-")}</span></td>
       <td>
         <span${minCls ? ` class="${minCls}"` : ""}>${tempTextPlain(row[kind].minTemp)}</span>
         <span> / </span>

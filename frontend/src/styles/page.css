@@ -770,24 +770,24 @@ body {
 }
 
 .precip-value-changed {
-  background-color: #e5e5e5;
+  background-color: #fee2e2;
   border-radius: 0.35mm;
   padding: 0.2mm 0.45mm;
-  color: #111111;
+  color: #b91c1c;
   font-weight: 700;
 }
 
 .value-highlight-chip,
 .forecast-value-changed,
 .dust-grade.dust-grade-bg-changed {
-  background-color: #e5e5e5;
+  background-color: #fee2e2;
   border-radius: 0.35mm;
   padding: 0.2mm 0.45mm;
   font-weight: 700;
 }
 
 .forecast-value-changed {
-  color: #111111;
+  color: #b91c1c;
 }
 
 .forecast-card {
