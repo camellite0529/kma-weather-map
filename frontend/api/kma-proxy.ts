@@ -1,4 +1,4 @@
-const TARGET_ORIGIN = "https://apis.data.go.kr";
+const ALLOWED_TARGET_PREFIX = "https://apis.data.go.kr/";
 const REQUEST_TIMEOUT_MS = 12000;
 
 async function fetchWithTimeout(url: string): Promise<Response> {
@@ -11,28 +11,8 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
-function buildTargetUrl(req: any): string | null {
-  const segments = req.query?.path;
-  const pathParts = Array.isArray(segments) ? segments : segments ? [segments] : [];
-  if (pathParts.length === 0) return null;
-
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(req.query ?? {})) {
-    if (key === "path") continue;
-    if (Array.isArray(value)) {
-      for (const v of value) search.append(key, String(v));
-    } else if (value != null) {
-      search.append(key, String(value));
-    }
-  }
-
-  const path = pathParts.map((part: string) => encodeURIComponent(part)).join("/");
-  const qs = search.toString();
-  return `${TARGET_ORIGIN}/${path}${qs ? `?${qs}` : ""}`;
-}
-
 // apis.data.go.kr는 브라우저 CORS 헤더를 내려주지 않아 프로덕션에서 직접 호출이 막힌다.
-// 같은 오리진의 이 서버리스 함수가 대신 호출해 응답을 그대로 전달한다.
+// 같은 오리진의 이 서버리스 함수가 대신 전체 대상 URL(target)을 호출해 응답을 그대로 전달한다.
 export default async function handler(req: any, res: any) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -40,14 +20,14 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const targetUrl = buildTargetUrl(req);
-  if (!targetUrl) {
-    res.status(400).json({ error: "Missing upstream path." });
+  const target = String(req.query?.target ?? "");
+  if (!target.startsWith(ALLOWED_TARGET_PREFIX)) {
+    res.status(400).json({ error: "Invalid target." });
     return;
   }
 
   try {
-    const upstream = await fetchWithTimeout(targetUrl);
+    const upstream = await fetchWithTimeout(target);
     const body = await upstream.text();
     res.status(upstream.status);
     res.setHeader(

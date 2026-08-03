@@ -6,8 +6,13 @@ function kmaApiOrigin(): string {
   if (import.meta.env.DEV) {
     return `${window.location.origin}/__proxy/kma`;
   }
-  // apis.data.go.kr는 브라우저 CORS를 지원하지 않아 서버리스 프록시를 거친다.
-  return `${window.location.origin}/api/kma-proxy`;
+  return "https://apis.data.go.kr";
+}
+
+// apis.data.go.kr는 브라우저 CORS를 지원하지 않아 프로덕션에서는 서버리스 프록시를 거친다.
+function proxiedUrl(url: string): string {
+  if (import.meta.env.DEV) return url;
+  return `${window.location.origin}/api/kma-proxy?target=${encodeURIComponent(url)}`;
 }
 
 const SEA_BASE_URL = `${kmaApiOrigin()}/1360000/VilageFcstMsgService/getSeaFcst`;
@@ -158,7 +163,7 @@ async function fetchWithTimeout(url: string) {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    return await fetch(url, {
+    return await fetch(proxiedUrl(url), {
       signal: controller.signal,
       cache: "no-store",
     });
