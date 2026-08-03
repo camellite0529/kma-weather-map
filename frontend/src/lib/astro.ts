@@ -38,7 +38,8 @@ function kasiApiOrigin(): string {
   if (import.meta.env.DEV) {
     return `${window.location.origin}/__proxy/kma`;
   }
-  return "https://apis.data.go.kr";
+  // apis.data.go.kr는 브라우저 CORS를 지원하지 않아 서버리스 프록시를 거친다.
+  return `${window.location.origin}/api/kma-proxy`;
 }
 
 function formatHHMM(value?: string | null) {
