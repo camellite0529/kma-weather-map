@@ -883,12 +883,19 @@ function bindPngDownload(container: HTMLElement) {
 }
 
 const DATA_SOURCE_WATCHDOG_MS = 20000;
+// 날씨 데이터는 지도 도시(23곳) + 전국 기온범위 보조 지역(수십 곳)까지
+// 순차/배치로 여러 번 기상청 API를 호출하므로 정상적으로도 20초를 넘길 수 있다.
+const WEATHER_WATCHDOG_MS = 90000;
 
-function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
+function withWatchdog<T>(
+  promise: Promise<T>,
+  label: string,
+  timeoutMs: number = DATA_SOURCE_WATCHDOG_MS,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`${label} 응답 시간 초과`));
-    }, DATA_SOURCE_WATCHDOG_MS);
+    }, timeoutMs);
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -905,7 +912,7 @@ function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
 async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
   const [weatherResult, astroResult, dustResult, seaResult, noteResult] =
     await Promise.allSettled([
-      withWatchdog(getWeatherData(apiKey), "날씨"),
+      withWatchdog(getWeatherData(apiKey), "날씨", WEATHER_WATCHDOG_MS),
       withWatchdog(getAstroTimes(apiKey), "출몰시각"),
       withWatchdog(getDustData(apiKey), "미세먼지"),
       withWatchdog(getSeaForecastData(apiKey), "파고"),
