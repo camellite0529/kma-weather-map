@@ -37,9 +37,21 @@ function todayNoteApiOrigin(): string {
   return `${window.location.origin}/api`;
 }
 
+const REQUEST_TIMEOUT_MS = 12000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function getTodayNote(apiKey: string, date: string): Promise<TodayNotePayload | null> {
   const url = `${todayNoteApiOrigin()}/today-note?date=${encodeURIComponent(date)}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "GET",
     cache: "no-store",
     headers: {
@@ -60,7 +72,7 @@ export async function getTodayNote(apiKey: string, date: string): Promise<TodayN
 
 export async function saveTodayNote(apiKey: string, title: string, body: string): Promise<void> {
   const url = `${todayNoteApiOrigin()}/today-note`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     cache: "no-store",
     headers: {

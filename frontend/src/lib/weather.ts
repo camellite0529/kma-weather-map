@@ -220,6 +220,17 @@ async function fetchWithTimeout(url: string) {
   }
 }
 
+async function fetchLocalApiWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function buildLandRequestUrl({
   serviceKey,
   regId,
@@ -806,7 +817,7 @@ async function readStoredMapBaseline(
 ): Promise<StoredMapHighlightBaseline | null> {
   if (typeof window === "undefined") return null;
   try {
-    const response = await fetch(`/api/map-baseline?date=${baseDate}`, {
+    const response = await fetchLocalApiWithTimeout(`/api/map-baseline?date=${baseDate}`, {
       cache: "no-store",
       headers: { "x-kma-service-key": apiKey },
     });
@@ -845,7 +856,7 @@ async function writeStoredMapBaseline(
   writeLocalBaseline(payload);
 
   try {
-    await fetch("/api/map-baseline", {
+    await fetchLocalApiWithTimeout("/api/map-baseline", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
