@@ -1004,6 +1004,39 @@ function latestAnnounceTime(data: CityForecastResult[]) {
   );
 }
 
+// 전국날씨 범위 텍스트 계산에 필요한 예보구역 보조 조회는 지도/표 렌더링과
+// 무관하므로, 시간 내에 못 끝나면 이미 받아온 지도 도시 데이터로 즉시 대체한다.
+const NATIONAL_TEMP_RANGE_BUDGET_MS = 15000;
+
+async function withFallback<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
 export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResult> {
   const [settled, landOverviewText] = await Promise.all([
     runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
@@ -1043,7 +1076,11 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
       base.baseTime,
       kmaServiceKey,
     ),
-    collectNationalTempRangeRows(kmaServiceKey, weatherData),
+    withFallback(
+      collectNationalTempRangeRows(kmaServiceKey, weatherData),
+      NATIONAL_TEMP_RANGE_BUDGET_MS,
+      toDefaultNationalTempRangeRows(weatherData),
+    ),
   ]);
 
   return {
