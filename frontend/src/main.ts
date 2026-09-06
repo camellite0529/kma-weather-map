@@ -120,15 +120,20 @@ function clearStoredApiKey() {
 async function syncApiKeyToServer(apiKey: string): Promise<void> {
   const normalized = apiKey.trim();
   if (!normalized) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     await fetch("/api/user-key", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ serviceKey: normalized }),
       cache: "no-store",
+      signal: controller.signal,
     });
   } catch {
     // 서버 등록 실패가 클라이언트 데이터 로드를 막지 않도록 무시
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -877,14 +882,34 @@ function bindPngDownload(container: HTMLElement) {
   });
 }
 
+const DATA_SOURCE_WATCHDOG_MS = 20000;
+
+function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} 응답 시간 초과`));
+    }, DATA_SOURCE_WATCHDOG_MS);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
   const [weatherResult, astroResult, dustResult, seaResult, noteResult] =
     await Promise.allSettled([
-      getWeatherData(apiKey),
-      getAstroTimes(apiKey),
-      getDustData(apiKey),
-      getSeaForecastData(apiKey),
-      getTodayNote(apiKey, getTodayDateString()),
+      withWatchdog(getWeatherData(apiKey), "날씨"),
+      withWatchdog(getAstroTimes(apiKey), "출몰시각"),
+      withWatchdog(getDustData(apiKey), "미세먼지"),
+      withWatchdog(getSeaForecastData(apiKey), "파고"),
+      withWatchdog(getTodayNote(apiKey, getTodayDateString()), "오늘의 노트"),
     ]);
 
   const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;

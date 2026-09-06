@@ -88,6 +88,18 @@ export function isKvConfigured(): boolean {
   return Boolean(kvBaseUrl() && kvToken());
 }
 
+const KV_REQUEST_TIMEOUT_MS = 8000;
+
+async function fetchKvWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), KV_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export function baselineKvKey(date: string, keyHash: string): string {
   return `kma:map-baseline:${date}:${keyHash}`;
 }
@@ -101,7 +113,7 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   const token = kvToken();
   if (!baseUrl || !token) return null;
 
-  const response = await fetch(`${baseUrl}/get/${encodeURIComponent(key)}`, {
+  const response = await fetchKvWithTimeout(`${baseUrl}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
@@ -165,7 +177,7 @@ export async function kvSet<T>(key: string, value: T, exSeconds?: number): Promi
     body.ex = exSeconds;
   }
 
-  const response = await fetch(`${baseUrl}/set/${encodeURIComponent(key)}`, {
+  const response = await fetchKvWithTimeout(`${baseUrl}/set/${encodeURIComponent(key)}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

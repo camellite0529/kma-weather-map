@@ -47,6 +47,17 @@ function dustApiOrigin(): string {
 }
 
 const BASE_URL = `${dustApiOrigin()}/api/MinuDustFrcstDspthSvrc/v1/getMinuDustFrcstDspth`;
+const REQUEST_TIMEOUT_MS = 12000;
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 type DustRegionGroup = {
   region: string;
@@ -244,9 +255,8 @@ async function fetchForecastItems(
     ? normalizedKey
     : encodeURIComponent(normalizedKey);
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`,
-    { cache: "no-store" },
   );
 
   if (!res.ok) {
