@@ -1,5 +1,5 @@
 import { getTargetDate } from "./kma";
-import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
+import { createTimeoutSignal, isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
 import dustRegionGroupsJson from "../../data/dust-region-groups.json";
 
 export type DustLevel = "좋음" | "보통" | "나쁨" | "매우 나쁨" | "unknown";
@@ -49,13 +49,12 @@ function dustApiOrigin(): string {
 const BASE_URL = `${dustApiOrigin()}/api/MinuDustFrcstDspthSvrc/v1/getMinuDustFrcstDspth`;
 const REQUEST_TIMEOUT_MS = 12000;
 
-async function fetchWithTimeout(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchWithTimeout(url: string, externalSignal?: AbortSignal): Promise<Response> {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
   try {
-    return await fetch(url, { cache: "no-store", signal: controller.signal });
+    return await fetch(url, { cache: "no-store", signal });
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
@@ -240,6 +239,7 @@ function extractPublishHour(item: DustForecastItem): number | null {
 async function fetchForecastItems(
   serviceKey: string,
   informCode: "PM10" | "PM25",
+  signal?: AbortSignal,
 ): Promise<DustForecastItem[]> {
   const normalizedKey = normalizeServiceKey(serviceKey);
 
@@ -257,6 +257,7 @@ async function fetchForecastItems(
 
   const res = await fetchWithTimeout(
     `${BASE_URL}?serviceKey=${encodedServiceKey}&${params.toString()}`,
+    signal,
   );
 
   if (!res.ok) {
@@ -277,8 +278,9 @@ async function fetchForecast(
   serviceKey: string,
   informCode: "PM10" | "PM25",
   targetDate: string,
+  signal?: AbortSignal,
 ) {
-  const items = await fetchForecastItems(serviceKey, informCode);
+  const items = await fetchForecastItems(serviceKey, informCode, signal);
   const sorted = forecastsForDateSortedDesc(items, targetDate);
   const matched = sorted[0];
 
@@ -345,12 +347,15 @@ function buildRegionValueHighlights(
   });
 }
 
-export async function getDustData(airkoreaServiceKey: string): Promise<DustData> {
+export async function getDustData(
+  airkoreaServiceKey: string,
+  signal?: AbortSignal,
+): Promise<DustData> {
   const targetDate = formatDashedDate(getTargetDate(1));
 
   const [pm10Result, pm25Result] = await Promise.all([
-    fetchForecast(airkoreaServiceKey, "PM10", targetDate),
-    fetchForecast(airkoreaServiceKey, "PM25", targetDate),
+    fetchForecast(airkoreaServiceKey, "PM10", targetDate, signal),
+    fetchForecast(airkoreaServiceKey, "PM25", targetDate, signal),
   ]);
 
   const pm10Data = pm10Result.matched;

@@ -1,5 +1,6 @@
 import astroQueryJson from "../../data/astro-query.json";
 import * as SunCalc from "suncalc";
+import { createTimeoutSignal } from "./api-utils";
 
 export type AstroTimes = {
   sunrise: string | null;
@@ -153,21 +154,23 @@ function hasAnyAstroTime(astro: AstroTimes) {
   return Boolean(astro.sunrise || astro.sunset || astro.moonrise || astro.moonset);
 }
 
-async function fetchWithTimeout(url: string) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchWithTimeout(url: string, externalSignal?: AbortSignal) {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
 
   try {
     return await fetch(proxiedUrl(url), {
-      signal: controller.signal,
+      signal,
       cache: "no-store",
     });
   } finally {
-    window.clearTimeout(timeout);
+    cleanup();
   }
 }
 
-async function fetchKasiAstroTimes(kasiServiceKey: string): Promise<AstroResult> {
+async function fetchKasiAstroTimes(
+  kasiServiceKey: string,
+  signal?: AbortSignal,
+): Promise<AstroResult> {
   const serviceKey = kasiServiceKey.trim();
 
   const encodedServiceKey = /%[0-9A-Fa-f]{2}/.test(serviceKey)
@@ -181,7 +184,7 @@ async function fetchKasiAstroTimes(kasiServiceKey: string): Promise<AstroResult>
 
   const url = `${kasiApiOrigin()}/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo?serviceKey=${encodedServiceKey}&${params.toString()}`;
 
-  const res = await fetchWithTimeout(url);
+  const res = await fetchWithTimeout(url, signal);
 
   if (!res.ok) {
     throw new Error(`출몰시각 API 호출 실패: ${res.status}`);
@@ -209,9 +212,12 @@ async function fetchKasiAstroTimes(kasiServiceKey: string): Promise<AstroResult>
   return astro;
 }
 
-export async function getAstroTimes(kasiServiceKey: string): Promise<AstroResult> {
+export async function getAstroTimes(
+  kasiServiceKey: string,
+  signal?: AbortSignal,
+): Promise<AstroResult> {
   try {
-    return await fetchKasiAstroTimes(kasiServiceKey);
+    return await fetchKasiAstroTimes(kasiServiceKey, signal);
   } catch (error) {
     console.warn("Falling back to calculated astro times.", error);
     return calculateAstroTimes();

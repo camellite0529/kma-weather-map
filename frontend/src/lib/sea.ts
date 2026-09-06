@@ -1,4 +1,4 @@
-﻿import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
+﻿import { createTimeoutSignal, isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
 
 const REQUEST_TIMEOUT_MS = 12000;
 
@@ -158,17 +158,16 @@ function formatWaveRange(min: number, max: number): string {
   return `${formatWaveNumber(min)}~${formatWaveNumber(max)}`;
 }
 
-async function fetchWithTimeout(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchWithTimeout(url: string, externalSignal?: AbortSignal) {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
 
   try {
     return await fetch(proxiedUrl(url), {
-      signal: controller.signal,
+      signal,
       cache: "no-store",
     });
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
@@ -193,11 +192,11 @@ function buildSeaRequestUrl({
   return `${SEA_BASE_URL}?ServiceKey=${encodedServiceKey}&${params.toString()}`;
 }
 
-async function fetchJsonWithValidation(url: string, regionLabel: string) {
+async function fetchJsonWithValidation(url: string, regionLabel: string, signal?: AbortSignal) {
   let res: Response;
 
   try {
-    res = await fetchWithTimeout(url);
+    res = await fetchWithTimeout(url, signal);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "알 수 없는 네트워크 오류";
@@ -238,6 +237,7 @@ async function fetchSeaForecastByRegId(
   serviceKey: string,
   regId: string,
   regionLabel: string,
+  signal?: AbortSignal,
 ): Promise<SeaFcstItem[]> {
   const normalizedKey = normalizeServiceKey(serviceKey);
 
@@ -246,7 +246,7 @@ async function fetchSeaForecastByRegId(
     regId,
   });
 
-  const json = await fetchJsonWithValidation(url, `${regionLabel}(${regId})`);
+  const json = await fetchJsonWithValidation(url, `${regionLabel}(${regId})`, signal);
   const items = json?.response?.body?.items?.item ?? [];
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -373,11 +373,12 @@ function summarizeWaveItems(items: SeaFcstItem[]) {
 async function summarizeRegion(
   serviceKey: string,
   group: (typeof SEA_REGION_GROUPS)[number],
+  signal?: AbortSignal,
 ): Promise<SeaRegionComputed> {
   const regIds = group.subregions.map((k) => SEA_SUBREGION_CODES[k]);
 
   const settled = await Promise.allSettled(
-    regIds.map((regId) => fetchSeaForecastByRegId(serviceKey, regId, group.label)),
+    regIds.map((regId) => fetchSeaForecastByRegId(serviceKey, regId, group.label, signal)),
   );
 
   const parts = settled
@@ -507,9 +508,12 @@ export function createEmptySeaForecastData(): SeaForecastData {
   return toPublicSeaData(computed);
 }
 
-export async function getSeaForecastData(serviceKey: string): Promise<SeaForecastData> {
+export async function getSeaForecastData(
+  serviceKey: string,
+  signal?: AbortSignal,
+): Promise<SeaForecastData> {
   const settled = await Promise.allSettled(
-    SEA_REGION_GROUPS.map((group) => summarizeRegion(serviceKey, group)),
+    SEA_REGION_GROUPS.map((group) => summarizeRegion(serviceKey, group, signal)),
   );
 
   const computed: SeaRegionComputed[] = settled.map((result, index) => {
