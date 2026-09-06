@@ -246,6 +246,41 @@
   color: #b91c1c;
 }
 
+/* 날씨/미세먼지/출몰시각처럼 서로 다른 속도로 도착하는 데이터 영역을
+   독립적으로 로딩 표시하기 위한 오버레이. */
+.section-loading-wrap {
+  position: relative;
+}
+
+.section-loading-wrap[data-loading="true"] > *:not(.section-loading-overlay) {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.section-loading-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: inherit;
+}
+
+.section-loading-wrap[data-loading="true"] .section-loading-overlay {
+  display: flex;
+}
+
+.section-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #cbd5e1;
+  border-top-color: #64748b;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 .sheet-toolbar-actions {
   display: flex;
   gap: 8px;
