@@ -45,6 +45,11 @@ let latestWeatherApiKey: string | null = null;
 let baselineSaveTimerId: number | null = null;
 let currentNoteTitle = "";
 let currentNoteBody = "";
+// 새로고침 버튼·설정에서 키를 바꿔도 항상 최신 값을 읽도록 클로저에 스냅샷을 담지 않고
+// 이 모듈 변수를 통해 조회한다.
+let currentApiKey = "";
+let latestSeaData: SeaForecastData = createEmptySeaForecastData();
+let latestLandOverviewText = "";
 
 /** 춘천–강릉, 세종–청주, 전주–부산 구간 행 위 가로선을 굵게) */
 const PRECIP_STRONG_DIVIDER_BEFORE_CITY = new Set(["강릉", "청주", "부산"]);
@@ -63,6 +68,27 @@ function setToolbarLoadState(app: HTMLElement, state: DataLoadToolbarState) {
   el.dataset.state = state;
   const label = el.querySelector(".data-load-status-label");
   if (label) label.textContent = labelForDataLoadState(state);
+}
+
+const SECTION_LOADING_OVERLAY_HTML =
+  '<div class="section-loading-overlay" aria-hidden="true"><span class="section-spinner"></span></div>';
+
+/** 날씨/미세먼지/출몰시각처럼 서로 독립적으로 도착하는 데이터 영역에 로딩 오버레이를 표시한다. */
+function setSectionLoading(app: HTMLElement, wrapId: string, loading: boolean) {
+  const wrap = app.querySelector<HTMLElement>(`#${wrapId}`);
+  if (!wrap) return;
+  wrap.dataset.loading = loading ? "true" : "false";
+  if (loading && !wrap.querySelector(".section-loading-overlay")) {
+    wrap.insertAdjacentHTML("afterbegin", SECTION_LOADING_OVERLAY_HTML);
+  }
+}
+
+/** 로딩 오버레이는 유지한 채 해당 영역의 실제 콘텐츠만 최신 데이터로 교체한다. */
+function setSectionContent(app: HTMLElement, wrapId: string, contentHtml: string) {
+  const wrap = app.querySelector<HTMLElement>(`#${wrapId}`);
+  if (!wrap) return;
+  wrap.dataset.loading = "false";
+  wrap.innerHTML = contentHtml;
 }
 
 function html2CanvasCloneNoteInputs(clonedRoot: HTMLElement) {
@@ -149,15 +175,17 @@ function getTodayDateString(): string {
   return `${pick("year")}${pick("month")}${pick("day")}`;
 }
 
-function resetNotesIfDayChanged(): void {
+function resetNotesIfDayChanged(): boolean {
   const today = getTodayDateString();
   const lastNoteDate = localStorage.getItem(STORAGE_NOTE_DATE);
-  
+
   if (lastNoteDate !== today) {
     currentNoteTitle = "";
     currentNoteBody = "";
     localStorage.setItem(STORAGE_NOTE_DATE, today);
+    return true;
   }
+  return false;
 }
 
 function escapeHtml(s: string): string {
@@ -277,29 +305,36 @@ function astroTimeClass(changed: boolean) {
   return changed ? "astro-time astro-value-changed" : "astro-time";
 }
 
-function renderAstroCard(astro: AstroResult) {
+function renderAstroBodyHtml(astro: AstroResult) {
   const h = astro.fieldHighlights;
   return `
-    <section class="card astro-card">
-      <div class="astro-row">
-        <span class="astro-icon astro-icon-sun">☀</span>
-        <span class="astro-label">해뜸</span>
-        <span class="${astroTimeClass(h.sunrise)}">${escapeHtml(astro.sunrise ?? "-")}</span>
-        <span class="astro-label astro-label-right">해짐</span>
-        <span class="${astroTimeClass(h.sunset)}">${escapeHtml(astro.sunset ?? "-")}</span>
-      </div>
-      <div class="astro-row">
-        <span class="astro-icon astro-icon-moon">☾</span>
-        <span class="astro-label">달뜸</span>
-        <span class="${astroTimeClass(h.moonrise)}">${escapeHtml(astro.moonrise ?? "-")}</span>
-        <span class="astro-label astro-label-right">달짐</span>
-        <span class="${astroTimeClass(h.moonset)}">${escapeHtml(astro.moonset ?? "-")}</span>
-      </div>
+    <div class="astro-row">
+      <span class="astro-icon astro-icon-sun">☀</span>
+      <span class="astro-label">해뜸</span>
+      <span class="${astroTimeClass(h.sunrise)}">${escapeHtml(astro.sunrise ?? "-")}</span>
+      <span class="astro-label astro-label-right">해짐</span>
+      <span class="${astroTimeClass(h.sunset)}">${escapeHtml(astro.sunset ?? "-")}</span>
+    </div>
+    <div class="astro-row">
+      <span class="astro-icon astro-icon-moon">☾</span>
+      <span class="astro-label">달뜸</span>
+      <span class="${astroTimeClass(h.moonrise)}">${escapeHtml(astro.moonrise ?? "-")}</span>
+      <span class="astro-label astro-label-right">달짐</span>
+      <span class="${astroTimeClass(h.moonset)}">${escapeHtml(astro.moonset ?? "-")}</span>
+    </div>
+  `;
+}
+
+function renderAstroCard(astro: AstroResult) {
+  return `
+    <section class="card astro-card section-loading-wrap" id="astro-body" data-loading="true">
+      ${SECTION_LOADING_OVERLAY_HTML}
+      ${renderAstroBodyHtml(astro)}
     </section>
   `;
 }
 
-function renderPrecipChart(rows: CityWeather[]) {
+function renderPrecipBodyHtml(rows: CityWeather[]) {
   const ticks = [0, 20, 40, 60, 80, 100];
   const rowsHtml = rows
     .map((row) => {
@@ -339,6 +374,15 @@ function renderPrecipChart(rows: CityWeather[]) {
     .join("");
 
   return `
+    <div class="precip-scale" aria-hidden="true">
+      ${ticks.map((t) => `<span style="left: ${t}%">${t}</span>`).join("")}
+    </div>
+    <div class="precip-chart">${rowsHtml}</div>
+  `;
+}
+
+function renderPrecipChart(rows: CityWeather[]) {
+  return `
     <section class="card precip-card">
       <div class="section-header section-header-tight">
         <h2>눈·비올 확률(%)</h2>
@@ -353,10 +397,10 @@ function renderPrecipChart(rows: CityWeather[]) {
           </span>
         </div>
       </div>
-      <div class="precip-scale" aria-hidden="true">
-        ${ticks.map((t) => `<span style="left: ${t}%">${t}</span>`).join("")}
+      <div class="section-loading-wrap" id="precip-body" data-loading="true">
+        ${SECTION_LOADING_OVERLAY_HTML}
+        ${renderPrecipBodyHtml(rows)}
       </div>
-      <div class="precip-chart">${rowsHtml}</div>
     </section>
   `;
 }
@@ -405,15 +449,7 @@ function renderCompactDayTable(
   `;
 }
 
-function renderPage(
-  weather: WeatherResult,
-  astro: AstroResult,
-  dust: DustData,
-  loadToolbarState: DataLoadToolbarState = "complete",
-) {
-  const noteTitle = currentNoteTitle;
-  const noteBody = currentNoteBody;
-
+function weatherRowsByCity(weather: WeatherResult) {
   const weatherByCity = new Map(weather.data.map((item) => [item.city, item]));
   const tableRows = TABLE_CITIES.map((city) => weatherByCity.get(city)).filter(
     (item): item is CityWeather => Boolean(item),
@@ -421,19 +457,22 @@ function renderPage(
   const precipRows = PRECIP_CITIES.map((city) => weatherByCity.get(city)).filter(
     (item): item is CityWeather => Boolean(item),
   );
+  return { tableRows, precipRows };
+}
 
-  const warningsBlock =
-    weather.warnings.length > 0
-      ? `
+function renderWarningsHtml(weather: WeatherResult) {
+  if (weather.warnings.length === 0) return "";
+  return `
     <section class="card warning-card">
       <h2>일부 지역 데이터 지연</h2>
       <ul class="warning-list">
         ${weather.warnings.map((w) => `<li>${escapeHtml(w.message)}</li>`).join("")}
       </ul>
-    </section>`
-      : "";
+    </section>`;
+}
 
-  const markersHtml = weather.data
+function renderMapMarkersHtml(weather: WeatherResult) {
+  return weather.data
     .map((item) => {
       const pos = getMarkerPosition(item.city);
       const skyChanged = item.landPublishHighlights?.tomorrowSky === true;
@@ -463,7 +502,27 @@ function renderPage(
       </div>`;
     })
     .join("");
+}
 
+function renderMapStageContentHtml(weather: WeatherResult) {
+  return `
+    <div class="map-title-stack">
+      <h2 class="map-title">전국날씨(℃)</h2>
+      <p class="map-national-range">${escapeHtml(weather.tomorrowNationalTempRangeText)}</p>
+    </div>
+    <img src="${import.meta.env.BASE_URL}map-bg.png" alt="대한민국 지도" class="map-image" />
+    ${renderMapMarkersHtml(weather)}
+  `;
+}
+
+function renderForecastGridHtml(tableRows: CityWeather[]) {
+  return `
+    ${renderCompactDayTable("내일", tableRows, "dayAfterTomorrow")}
+    ${renderCompactDayTable("모레", tableRows, "threeDaysLater")}
+  `;
+}
+
+function renderDustBodyHtml(dust: DustData) {
   const dustHead = dust.regions
     .map(
       (item) =>
@@ -487,15 +546,43 @@ function renderPage(
     })
     .join("");
 
-  const updated =
-    weather.updatedAt.trim() !== "" && !Number.isNaN(Date.parse(weather.updatedAt))
-      ? escapeHtml(
-          new Date(weather.updatedAt).toLocaleString("ko-KR", {
-            timeZone: "Asia/Seoul",
-          }),
-        )
-      : "-";
+  return `
+    <div class="dust-table-head">
+      <div class="dust-left-spacer"></div>
+      ${dustHead}
+    </div>
+    <div class="dust-table-row">
+      <div class="dust-row-label">미세먼지</div>
+      ${dustPm10}
+    </div>
+    <div class="dust-table-row">
+      <div class="dust-row-label">초미세먼지</div>
+      ${dustPm25}
+    </div>
+  `;
+}
 
+function formatUpdatedAt(weather: WeatherResult) {
+  return weather.updatedAt.trim() !== "" && !Number.isNaN(Date.parse(weather.updatedAt))
+    ? escapeHtml(
+        new Date(weather.updatedAt).toLocaleString("ko-KR", {
+          timeZone: "Asia/Seoul",
+        }),
+      )
+    : "-";
+}
+
+function renderPage(
+  weather: WeatherResult,
+  astro: AstroResult,
+  dust: DustData,
+  loadToolbarState: DataLoadToolbarState = "complete",
+) {
+  const noteTitle = currentNoteTitle;
+  const noteBody = currentNoteBody;
+
+  const { tableRows, precipRows } = weatherRowsByCity(weather);
+  const updated = formatUpdatedAt(weather);
   const loadStatusLabel = labelForDataLoadState(loadToolbarState);
 
   return `
@@ -528,9 +615,9 @@ function renderPage(
           <h1>지면용 오늘의 날씨</h1>
           <div class="print-meta">
             <div>
-              발표기준: ${escapeHtml(weather.base.baseDate)} ${escapeHtml(weather.base.baseTime)}
+              발표기준: <span id="print-meta-base">${escapeHtml(weather.base.baseDate)} ${escapeHtml(weather.base.baseTime)}</span>
             </div>
-            <div>업데이트: ${updated}</div>
+            <div>업데이트: <span id="print-meta-updated">${updated}</span></div>
           </div>
         </header>
         <div class="top-layout">
@@ -592,17 +679,13 @@ function renderPage(
             ${renderAstroCard(astro)}
           </div>
         </div>
-        ${warningsBlock}
+        <div id="warnings-section">${renderWarningsHtml(weather)}</div>
         <div class="news-layout">
           <section class="card layout-map">
             <div class="map-shell">
-              <div class="map-stage">
-                <div class="map-title-stack">
-                  <h2 class="map-title">전국날씨(℃)</h2>
-                  <p class="map-national-range">${escapeHtml(weather.tomorrowNationalTempRangeText)}</p>
-                </div>
-                <img src="${import.meta.env.BASE_URL}map-bg.png" alt="대한민국 지도" class="map-image" />
-                ${markersHtml}
+              <div class="map-stage section-loading-wrap" id="map-stage" data-loading="true">
+                ${SECTION_LOADING_OVERLAY_HTML}
+                ${renderMapStageContentHtml(weather)}
               </div>
             </div>
           </section>
@@ -612,9 +695,9 @@ function renderPage(
               <div class="section-header section-header-tight">
                 <h2>예상날씨(℃)</h2>
               </div>
-              <div class="forecast-grid">
-                ${renderCompactDayTable("내일", tableRows, "dayAfterTomorrow")}
-                ${renderCompactDayTable("모레", tableRows, "threeDaysLater")}
+              <div class="forecast-grid section-loading-wrap" id="forecast-body" data-loading="true">
+                ${SECTION_LOADING_OVERLAY_HTML}
+                ${renderForecastGridHtml(tableRows)}
               </div>
             </section>
           </div>
@@ -622,22 +705,12 @@ function renderPage(
             <div class="section-header section-header-tight dust-header">
               <h2>오늘의 미세먼지</h2>
               <div class="dust-meta">
-                <span class="dust-announced">발표: ${escapeHtml(dust.announcedAt ?? "-")}</span>
+                <span class="dust-announced" id="dust-announced">발표: ${escapeHtml(dust.announcedAt ?? "-")}</span>
               </div>
             </div>
-            <div class="dust-table">
-              <div class="dust-table-head">
-                <div class="dust-left-spacer"></div>
-                ${dustHead}
-              </div>
-              <div class="dust-table-row">
-                <div class="dust-row-label">미세먼지</div>
-                ${dustPm10}
-              </div>
-              <div class="dust-table-row">
-                <div class="dust-row-label">초미세먼지</div>
-                ${dustPm25}
-              </div>
+            <div class="dust-table section-loading-wrap" id="dust-body" data-loading="true">
+              ${SECTION_LOADING_OVERLAY_HTML}
+              ${renderDustBodyHtml(dust)}
             </div>
           </section>
         </div>
@@ -753,7 +826,7 @@ function renderLandOverviewDialogHtml(text: string) {
   `;
 }
 
-function bindLandOverviewButton(app: HTMLElement, landOverviewText: string) {
+function bindLandOverviewButton(app: HTMLElement) {
   const btn = app.querySelector<HTMLAnchorElement>("#land-overview-btn");
   if (!btn) return;
 
@@ -761,7 +834,7 @@ function bindLandOverviewButton(app: HTMLElement, landOverviewText: string) {
     event.preventDefault();
     if (app.querySelector("#land-overview-overlay")) return;
 
-    app.insertAdjacentHTML("beforeend", renderLandOverviewDialogHtml(landOverviewText));
+    app.insertAdjacentHTML("beforeend", renderLandOverviewDialogHtml(latestLandOverviewText));
     const overlay = app.querySelector<HTMLElement>("#land-overview-overlay");
     if (!overlay) return;
 
@@ -788,13 +861,14 @@ function bindLandOverviewButton(app: HTMLElement, landOverviewText: string) {
   });
 }
 
-function bindSeaForecastButton(app: HTMLElement, sea: SeaForecastData) {
+function bindSeaForecastButton(app: HTMLElement) {
   const btn = app.querySelector<HTMLButtonElement>("#sea-forecast-btn");
   if (!btn) return;
 
   btn.addEventListener("click", () => {
     if (app.querySelector("#sea-forecast-overlay")) return;
 
+    const sea = latestSeaData;
     app.insertAdjacentHTML("beforeend", renderSeaForecastDialogHtml(sea));
     const overlay = app.querySelector<HTMLElement>("#sea-forecast-overlay");
     if (!overlay) return;
@@ -916,34 +990,138 @@ function withWatchdog<T>(
   });
 }
 
+/** 날씨(지도/눈비확률/예상날씨) 관련 영역을 최신 데이터로 갱신한다. */
+function updateWeatherSections(app: HTMLElement, weather: WeatherResult) {
+  const { tableRows, precipRows } = weatherRowsByCity(weather);
+
+  const baseEl = app.querySelector<HTMLElement>("#print-meta-base");
+  if (baseEl) baseEl.textContent = `${weather.base.baseDate} ${weather.base.baseTime}`;
+  const updatedEl = app.querySelector<HTMLElement>("#print-meta-updated");
+  if (updatedEl) updatedEl.textContent = formatUpdatedAt(weather);
+
+  const warningsEl = app.querySelector<HTMLElement>("#warnings-section");
+  if (warningsEl) warningsEl.innerHTML = renderWarningsHtml(weather);
+
+  setSectionContent(app, "map-stage", renderMapStageContentHtml(weather));
+  setSectionContent(app, "precip-body", renderPrecipBodyHtml(precipRows));
+  setSectionContent(app, "forecast-body", renderForecastGridHtml(tableRows));
+}
+
+/** 미세먼지 표를 최신 데이터로 갱신한다. */
+function updateDustSection(app: HTMLElement, dust: DustData) {
+  const announcedEl = app.querySelector<HTMLElement>("#dust-announced");
+  if (announcedEl) announcedEl.textContent = `발표: ${dust.announcedAt ?? "-"}`;
+  setSectionContent(app, "dust-body", renderDustBodyHtml(dust));
+}
+
+/** 출몰시각 카드를 최신 데이터로 갱신한다. */
+function updateAstroSection(app: HTMLElement, astro: AstroResult) {
+  setSectionContent(app, "astro-body", renderAstroBodyHtml(astro));
+}
+
+function applyFetchedTodayNote(app: HTMLElement, note: { title: string; body: string } | null) {
+  currentNoteTitle = note?.title ?? "";
+  currentNoteBody = note?.body ?? "";
+  const titleEl = app.querySelector<HTMLInputElement>(".today-note-short");
+  const bodyEl = app.querySelector<HTMLTextAreaElement>(".today-note-long");
+  if (titleEl) titleEl.value = currentNoteTitle;
+  if (bodyEl) bodyEl.value = currentNoteBody;
+}
+
+function setSeaForecastButtonLoading(app: HTMLElement, loading: boolean) {
+  const btn = app.querySelector<HTMLButtonElement>("#sea-forecast-btn");
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.title = loading ? "파고 정보를 불러오는 중입니다." : "";
+}
+
+/**
+ * 날씨/미세먼지/출몰시각/파고/오늘의 노트를 각각 독립적으로 불러와, 도착하는
+ * 대로 해당 영역만 갱신한다. 느린 데이터 하나 때문에 이미 도착한 다른 데이터까지
+ * "로딩중"으로 묶여있지 않도록 하는 것이 핵심이다.
+ */
 async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
-  const [weatherResult, astroResult, dustResult, seaResult, noteResult] =
-    await Promise.allSettled([
-      withWatchdog((signal) => getWeatherData(apiKey, signal), "날씨", WEATHER_WATCHDOG_MS),
-      withWatchdog((signal) => getAstroTimes(apiKey, signal), "출몰시각"),
-      withWatchdog((signal) => getDustData(apiKey, signal), "미세먼지"),
-      withWatchdog((signal) => getSeaForecastData(apiKey, signal), "파고"),
-      withWatchdog(
-        (signal) => getTodayNote(apiKey, getTodayDateString(), signal),
-        "오늘의 노트",
-      ),
-    ]);
+  currentApiKey = apiKey;
 
-  const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;
-  const dust = dustResult.status === "fulfilled" ? dustResult.value : createEmptyDustData();
-  const sea = seaResult.status === "fulfilled" ? seaResult.value : createEmptySeaForecastData();
-
-  resetNotesIfDayChanged();
-  if (noteResult.status === "fulfilled" && noteResult.value) {
-    currentNoteTitle = noteResult.value.title;
-    currentNoteBody = noteResult.value.body;
-  } else {
-    currentNoteTitle = "";
-    currentNoteBody = "";
+  if (resetNotesIfDayChanged()) {
+    applyFetchedTodayNote(app, null);
   }
 
-  let weather: WeatherResult;
-  let toolbarState: DataLoadToolbarState = "complete";
+  setSectionLoading(app, "map-stage", true);
+  setSectionLoading(app, "precip-body", true);
+  setSectionLoading(app, "forecast-body", true);
+  setSectionLoading(app, "dust-body", true);
+  setSectionLoading(app, "astro-body", true);
+  setToolbarLoadState(app, "loading");
+  setSeaForecastButtonLoading(app, true);
+
+  const weatherTask = withWatchdog(
+    (signal) => getWeatherData(apiKey, signal),
+    "날씨",
+    WEATHER_WATCHDOG_MS,
+  );
+  const astroTask = withWatchdog((signal) => getAstroTimes(apiKey, signal), "출몰시각");
+  const dustTask = withWatchdog((signal) => getDustData(apiKey, signal), "미세먼지");
+  const seaTask = withWatchdog((signal) => getSeaForecastData(apiKey, signal), "파고");
+  const noteTask = withWatchdog(
+    (signal) => getTodayNote(apiKey, getTodayDateString(), signal),
+    "오늘의 노트",
+  );
+
+  weatherTask.then(
+    (weather) => {
+      latestWeatherSnapshot = weather;
+      latestWeatherApiKey = apiKey;
+      latestLandOverviewText = weather.landOverviewText;
+      scheduleDailyElevenAmBaselineSave();
+      updateWeatherSections(app, weather);
+      setToolbarLoadState(app, "complete");
+    },
+    (error) => {
+      const message =
+        error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
+      latestLandOverviewText = "";
+      updateWeatherSections(app, {
+        ...createEmptyWeatherResult(),
+        warnings: [{ city: "날씨", message }],
+      });
+      setToolbarLoadState(app, "error");
+    },
+  );
+
+  dustTask.then(
+    (dust) => updateDustSection(app, dust),
+    () => updateDustSection(app, createEmptyDustData()),
+  );
+
+  astroTask.then(
+    (astro) => updateAstroSection(app, astro),
+    () => updateAstroSection(app, EMPTY_ASTRO),
+  );
+
+  seaTask.then(
+    (sea) => {
+      latestSeaData = sea;
+      setSeaForecastButtonLoading(app, false);
+    },
+    () => {
+      latestSeaData = createEmptySeaForecastData();
+      setSeaForecastButtonLoading(app, false);
+    },
+  );
+
+  noteTask.then(
+    (note) => applyFetchedTodayNote(app, note),
+    () => applyFetchedTodayNote(app, null),
+  );
+
+  const [weatherResult, astroResult, dustResult] = await Promise.allSettled([
+    weatherTask,
+    astroTask,
+    dustTask,
+    seaTask,
+    noteTask,
+  ]);
 
   if (weatherResult.status === "rejected") {
     // astro·dust 중 하나라도 성공했으면 API 키는 유효 → 날씨만 실패한 것
@@ -953,26 +1131,7 @@ async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
       // 모두 실패 → API 키 문제일 가능성이 높으므로 throw하여 키 입력 폼 표시
       throw weatherResult.reason;
     }
-    const message =
-      weatherResult.reason instanceof Error
-        ? weatherResult.reason.message
-        : "날씨 정보를 불러오지 못했습니다.";
-    weather = { ...createEmptyWeatherResult(), warnings: [{ city: "날씨", message }] };
-    toolbarState = "error";
-  } else {
-    weather = weatherResult.value;
-    latestWeatherSnapshot = weather;
-    latestWeatherApiKey = apiKey;
-    scheduleDailyElevenAmBaselineSave();
   }
-
-  app.innerHTML = renderPage(weather, astro, dust, toolbarState);
-  bindPngDownload(app);
-  bindTodayNotePersistence(app);
-  bindWeatherRefresh(app, apiKey);
-  bindSettingsButton(app);
-  bindLandOverviewButton(app, weather.landOverviewText);
-  bindSeaForecastButton(app, sea);
 }
 
 function showEmptyShell(
@@ -981,6 +1140,9 @@ function showEmptyShell(
   options?: { loadToolbarState?: DataLoadToolbarState; keylessPreview?: boolean },
 ) {
   const loadToolbarState = options?.loadToolbarState ?? "complete";
+  currentApiKey = apiKey;
+  latestSeaData = createEmptySeaForecastData();
+  latestLandOverviewText = "";
   resetNotesIfDayChanged();
   currentNoteTitle = "";
   currentNoteBody = "";
@@ -999,14 +1161,14 @@ function showEmptyShell(
       refreshBtn.title = "API 키를 입력한 뒤 데이터 새로고침을 사용할 수 있습니다.";
     }
   } else {
-    bindWeatherRefresh(app, apiKey);
+    bindWeatherRefresh(app);
   }
   bindSettingsButton(app);
-  bindLandOverviewButton(app, "");
-  bindSeaForecastButton(app, createEmptySeaForecastData());
+  bindLandOverviewButton(app);
+  bindSeaForecastButton(app);
 }
 
-function bindWeatherRefresh(container: HTMLElement, apiKey: string) {
+function bindWeatherRefresh(container: HTMLElement) {
   const btn = container.querySelector<HTMLButtonElement>("#weather-refresh-btn");
   if (!btn) return;
 
@@ -1023,7 +1185,7 @@ function bindWeatherRefresh(container: HTMLElement, apiKey: string) {
     setToolbarLoadState(container, "loading");
     let showedKeyFormAfterError = false;
     try {
-      await loadWeatherIntoApp(container, apiKey);
+      await loadWeatherIntoApp(container, currentApiKey);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "날씨 정보를 불러오지 못했습니다.";
