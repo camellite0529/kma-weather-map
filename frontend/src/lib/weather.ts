@@ -8,7 +8,7 @@ import {
   type DailyWeather,
   type LandFcstItem,
 } from "./kma";
-import { isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
+import { createTimeoutSignal, isLikelyEncodedKey, normalizeServiceKey } from "./api-utils";
 
 function kmaApiOrigin(): string {
   if (import.meta.env.DEV) {
@@ -206,28 +206,30 @@ function writeLocalBaseline(payload: StoredMapHighlightBaseline) {
   }
 }
 
-async function fetchWithTimeout(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchWithTimeout(url: string, externalSignal?: AbortSignal) {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
 
   try {
     return await fetch(proxiedUrl(url), {
-      signal: controller.signal,
+      signal,
       cache: "no-store",
     });
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
-async function fetchLocalApiWithTimeout(url: string, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchLocalApiWithTimeout(
+  url: string,
+  init?: RequestInit,
+  externalSignal?: AbortSignal,
+): Promise<Response> {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
 
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal });
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
@@ -333,12 +335,15 @@ function parseForecastZonesFromJson(json: any): {
   };
 }
 
-async function fetchForecastZones(serviceKey: string): Promise<ForecastZone[]> {
+async function fetchForecastZones(
+  serviceKey: string,
+  signal?: AbortSignal,
+): Promise<ForecastZone[]> {
   const normalizedKey = normalizeServiceKey(serviceKey);
   if (!normalizedKey) return [];
 
   const firstUrl = buildFcstZoneRequestUrl(normalizedKey, 1);
-  const firstRes = await fetchWithTimeout(firstUrl);
+  const firstRes = await fetchWithTimeout(firstUrl, signal);
   if (!firstRes.ok) return [];
   const firstRaw = await firstRes.text();
 
@@ -365,7 +370,7 @@ async function fetchForecastZones(serviceKey: string): Promise<ForecastZone[]> {
   for (let pageNo = 2; pageNo <= totalPages; pageNo += 1) {
     let res: Response;
     try {
-      res = await fetchWithTimeout(buildFcstZoneRequestUrl(normalizedKey, pageNo));
+      res = await fetchWithTimeout(buildFcstZoneRequestUrl(normalizedKey, pageNo), signal);
     } catch {
       continue;
     }
@@ -430,11 +435,11 @@ function mergeNationalTempRangeRows(
 }
 
 
-async function fetchJsonWithValidation(url: string, cityName: string) {
+async function fetchJsonWithValidation(url: string, cityName: string, signal?: AbortSignal) {
   let res: Response;
 
   try {
-    res = await fetchWithTimeout(url);
+    res = await fetchWithTimeout(url, signal);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "알 수 없는 네트워크 오류";
@@ -474,6 +479,7 @@ async function fetchJsonWithValidation(url: string, cityName: string) {
 async function fetchLandForecast(
   serviceKey: string,
   city: City,
+  signal?: AbortSignal,
 ): Promise<LandFcstItem[]> {
   const normalizedKey = normalizeServiceKey(serviceKey);
 
@@ -482,7 +488,7 @@ async function fetchLandForecast(
     regId: city.regId,
   });
 
-  const json = await fetchJsonWithValidation(url, city.name);
+  const json = await fetchJsonWithValidation(url, city.name, signal);
   const items = json?.response?.body?.items?.item ?? [];
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -608,6 +614,7 @@ async function fetchNationalTempRangeSupplementRows(
   serviceKey: string,
   zones: ForecastZone[],
   existingRegIds: Set<string>,
+  signal?: AbortSignal,
 ): Promise<NationalTempRangeRow[]> {
   const missingZones = zones.filter((zone) => !existingRegIds.has(zone.regId));
   if (missingZones.length === 0) return [];
@@ -626,7 +633,7 @@ async function fetchNationalTempRangeSupplementRows(
       let lastError: unknown = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          items = await fetchLandForecast(serviceKey, pseudoCity);
+          items = await fetchLandForecast(serviceKey, pseudoCity, signal);
           break;
         } catch (error) {
           lastError = error;
@@ -654,6 +661,7 @@ async function fetchNationalTempRangeSupplementRows(
 async function collectNationalTempRangeRows(
   serviceKey: string,
   rows: CityWeather[],
+  signal?: AbortSignal,
 ): Promise<NationalTempRangeRow[]> {
   const defaultRows = toDefaultNationalTempRangeRows(rows);
   const requiredZones = NATIONAL_TEMP_RANGE_REQUIRED_ZONES;
@@ -663,11 +671,12 @@ async function collectNationalTempRangeRows(
     serviceKey,
     requiredZones,
     defaultRegIds,
+    signal,
   );
   const fallbackRows = mergeNationalTempRangeRows(defaultRows, requiredRows);
 
   try {
-    const zones = pickNationalTempRangeZones(await fetchForecastZones(serviceKey));
+    const zones = pickNationalTempRangeZones(await fetchForecastZones(serviceKey, signal));
     if (zones.length === 0) return fallbackRows;
 
     const targetZoneByRegId = new Map(zones.map((zone) => [zone.regId, zone]));
@@ -685,6 +694,7 @@ async function collectNationalTempRangeRows(
       serviceKey,
       targetZones,
       existingRegIds,
+      signal,
     );
     return mergeNationalTempRangeRows(fromMapRows, supplementRows);
   } catch {
@@ -736,14 +746,14 @@ function extractOverviewTextFromJson(json: any): string {
   return wfSv;
 }
 
-async function fetchLandOverviewText(serviceKey: string): Promise<string> {
+async function fetchLandOverviewText(serviceKey: string, signal?: AbortSignal): Promise<string> {
   const normalizedKey = normalizeServiceKey(serviceKey);
   if (!normalizedKey) return "";
 
   const url = buildLandOverviewRequestUrl(normalizedKey);
   let res: Response;
   try {
-    res = await fetchWithTimeout(url);
+    res = await fetchWithTimeout(url, signal);
   } catch {
     return "";
   }
@@ -767,12 +777,13 @@ async function fetchLandOverviewText(serviceKey: string): Promise<string> {
 async function fetchCityForecast(
   serviceKey: string,
   city: City,
+  signal?: AbortSignal,
 ): Promise<CityForecastResult> {
   let items: LandFcstItem[] | null = null;
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      items = await fetchLandForecast(serviceKey, city);
+      items = await fetchLandForecast(serviceKey, city, signal);
       break;
     } catch (error) {
       lastError = error;
@@ -814,13 +825,18 @@ function isFivePmPublish(baseTime: string): boolean {
 async function readStoredMapBaseline(
   baseDate: string,
   apiKey: string,
+  signal?: AbortSignal,
 ): Promise<StoredMapHighlightBaseline | null> {
   if (typeof window === "undefined") return null;
   try {
-    const response = await fetchLocalApiWithTimeout(`/api/map-baseline?date=${baseDate}`, {
-      cache: "no-store",
-      headers: { "x-kma-service-key": apiKey },
-    });
+    const response = await fetchLocalApiWithTimeout(
+      `/api/map-baseline?date=${baseDate}`,
+      {
+        cache: "no-store",
+        headers: { "x-kma-service-key": apiKey },
+      },
+      signal,
+    );
     if (!response.ok) return readLocalBaseline(baseDate);
     const json = (await response.json()) as {
       ok?: boolean;
@@ -840,6 +856,7 @@ async function writeStoredMapBaseline(
   baseDate: string,
   rows: CityWeather[],
   apiKey: string,
+  signal?: AbortSignal,
 ) {
   if (typeof window === "undefined") return;
   const payload: StoredMapHighlightBaseline = {
@@ -856,15 +873,19 @@ async function writeStoredMapBaseline(
   writeLocalBaseline(payload);
 
   try {
-    await fetchLocalApiWithTimeout("/api/map-baseline", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-kma-service-key": apiKey,
+    await fetchLocalApiWithTimeout(
+      "/api/map-baseline",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-kma-service-key": apiKey,
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
       },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
+      signal,
+    );
   } catch {
     // 서버 저장 실패는 하이라이트 동작을 막지 않음
   }
@@ -885,8 +906,9 @@ async function applyStoredMapHighlights(
   baseDate: string,
   baseTime: string,
   apiKey: string,
+  signal?: AbortSignal,
 ): Promise<CityWeather[]> {
-  const stored = await readStoredMapBaseline(baseDate, apiKey);
+  const stored = await readStoredMapBaseline(baseDate, apiKey, signal);
   const sameDateBaseline = stored && stored.date === baseDate ? stored : null;
   const previousByCity = sameDateBaseline
     ? new Map(sameDateBaseline.rows.map((row) => [row.city, row]))
@@ -968,7 +990,7 @@ async function applyStoredMapHighlights(
   // 11시 발표 데이터만 baseline으로 저장한다.
   // (17시 발표 데이터는 노출/비교에만 사용)
   if (baseTime.startsWith("11")) {
-    await writeStoredMapBaseline(baseDate, rows, apiKey);
+    await writeStoredMapBaseline(baseDate, rows, apiKey, signal);
   }
 
   return nextRows;
@@ -1008,41 +1030,52 @@ function latestAnnounceTime(data: CityForecastResult[]) {
 // 무관하므로, 시간 내에 못 끝나면 이미 받아온 지도 도시 데이터로 즉시 대체한다.
 const NATIONAL_TEMP_RANGE_BUDGET_MS = 15000;
 
+// factory가 timeoutMs 안에 못 끝나면 그 작업을 실제로 취소(signal)하고 fallback으로 대체한다.
+// externalSignal이 먼저 취소되면(상위 워치독 등) 자체 예산과 무관하게 즉시 취소·대체한다.
 async function withFallback<T>(
-  promise: Promise<T>,
+  factory: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,
   fallback: T,
+  externalSignal?: AbortSignal,
 ): Promise<T> {
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+  }
+
+  const work = factory(controller.signal);
+
   return new Promise<T>((resolve) => {
     let settled = false;
-    const timer = setTimeout(() => {
+    const finish = (value: T) => {
       if (settled) return;
       settled = true;
-      resolve(fallback);
+      clearTimeout(timer);
+      externalSignal?.removeEventListener("abort", onExternalAbort);
+      resolve(value);
+    };
+    const timer = setTimeout(() => {
+      controller.abort();
+      finish(fallback);
     }, timeoutMs);
-    promise.then(
-      (value) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(value);
-      },
-      () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(fallback);
-      },
+    work.then(
+      (value) => finish(value),
+      () => finish(fallback),
     );
   });
 }
 
-export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResult> {
+export async function getWeatherData(
+  kmaServiceKey: string,
+  signal?: AbortSignal,
+): Promise<WeatherResult> {
   const [settled, landOverviewText] = await Promise.all([
     runInBatches(MAP_CITIES, CONCURRENCY, (city) =>
-      fetchCityForecast(kmaServiceKey, city),
+      fetchCityForecast(kmaServiceKey, city, signal),
     ),
-    fetchLandOverviewText(kmaServiceKey),
+    fetchLandOverviewText(kmaServiceKey, signal),
   ]);
 
   const data = settled.flatMap((item) =>
@@ -1075,11 +1108,13 @@ export async function getWeatherData(kmaServiceKey: string): Promise<WeatherResu
       base.baseDate,
       base.baseTime,
       kmaServiceKey,
+      signal,
     ),
     withFallback(
-      collectNationalTempRangeRows(kmaServiceKey, weatherData),
+      (innerSignal) => collectNationalTempRangeRows(kmaServiceKey, weatherData, innerSignal),
       NATIONAL_TEMP_RANGE_BUDGET_MS,
       toDefaultNationalTempRangeRows(weatherData),
+      signal,
     ),
   ]);
 

@@ -1,3 +1,5 @@
+import { createTimeoutSignal } from "./api-utils";
+
 export type TodayNotePayload = {
   title: string;
   body: string;
@@ -39,26 +41,37 @@ function todayNoteApiOrigin(): string {
 
 const REQUEST_TIMEOUT_MS = 12000;
 
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  externalSignal?: AbortSignal,
+): Promise<Response> {
+  const { signal, cleanup } = createTimeoutSignal(REQUEST_TIMEOUT_MS, externalSignal);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal });
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
-export async function getTodayNote(apiKey: string, date: string): Promise<TodayNotePayload | null> {
+export async function getTodayNote(
+  apiKey: string,
+  date: string,
+  signal?: AbortSignal,
+): Promise<TodayNotePayload | null> {
   const url = `${todayNoteApiOrigin()}/today-note?date=${encodeURIComponent(date)}`;
-  const response = await fetchWithTimeout(url, {
-    method: "GET",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      "x-kma-service-key": apiKey,
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "x-kma-service-key": apiKey,
+      },
     },
-  });
+    signal,
+  );
   if (!response.ok) {
     if (response.status === 404) return null;
     throw new Error(`Failed to fetch today note: ${response.status}`);

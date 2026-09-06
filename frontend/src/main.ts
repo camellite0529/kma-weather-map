@@ -887,16 +887,23 @@ const DATA_SOURCE_WATCHDOG_MS = 20000;
 // 순차/배치로 여러 번 기상청 API를 호출하므로 정상적으로도 20초를 넘길 수 있다.
 const WEATHER_WATCHDOG_MS = 90000;
 
+// factory가 timeoutMs 안에 못 끝나면 그 안에서 진행 중이던 fetch들을 실제로
+// 취소(signal)한 뒤 "OOO 응답 시간 초과"로 실패 처리한다. 방치된 요청이 백그라운드에서
+// 계속 기상청 API를 붙잡고 있지 않도록 한다.
 function withWatchdog<T>(
-  promise: Promise<T>,
+  factory: (signal: AbortSignal) => Promise<T>,
   label: string,
   timeoutMs: number = DATA_SOURCE_WATCHDOG_MS,
 ): Promise<T> {
+  const controller = new AbortController();
+  const work = factory(controller.signal);
+
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
+      controller.abort();
       reject(new Error(`${label} 응답 시간 초과`));
     }, timeoutMs);
-    promise.then(
+    work.then(
       (value) => {
         clearTimeout(timer);
         resolve(value);
@@ -912,11 +919,14 @@ function withWatchdog<T>(
 async function loadWeatherIntoApp(app: HTMLElement, apiKey: string) {
   const [weatherResult, astroResult, dustResult, seaResult, noteResult] =
     await Promise.allSettled([
-      withWatchdog(getWeatherData(apiKey), "날씨", WEATHER_WATCHDOG_MS),
-      withWatchdog(getAstroTimes(apiKey), "출몰시각"),
-      withWatchdog(getDustData(apiKey), "미세먼지"),
-      withWatchdog(getSeaForecastData(apiKey), "파고"),
-      withWatchdog(getTodayNote(apiKey, getTodayDateString()), "오늘의 노트"),
+      withWatchdog((signal) => getWeatherData(apiKey, signal), "날씨", WEATHER_WATCHDOG_MS),
+      withWatchdog((signal) => getAstroTimes(apiKey, signal), "출몰시각"),
+      withWatchdog((signal) => getDustData(apiKey, signal), "미세먼지"),
+      withWatchdog((signal) => getSeaForecastData(apiKey, signal), "파고"),
+      withWatchdog(
+        (signal) => getTodayNote(apiKey, getTodayDateString(), signal),
+        "오늘의 노트",
+      ),
     ]);
 
   const astro = astroResult.status === "fulfilled" ? astroResult.value : EMPTY_ASTRO;
